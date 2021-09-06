@@ -682,10 +682,14 @@ object MainRunner extends App {
 
       println("Writing results to temp output file...")
 <<<<<<< HEAD
+<<<<<<< HEAD
       Q12_results_df.write.csv("output/temp/Q11_results")
 =======
       Q11_results_df.write.csv("output/temp/Q11_results")
 >>>>>>> 2e5d368 (merge conflict workaround)
+=======
+      Q11_results_df.write.csv("output/temp/Q11_results")
+>>>>>>> 2e5d36825badbee25d49847aa381e71cbbd0b88f
       outputCombiner("output/temp/Q11_results", "output/question_11" , "results")
 
       println("Cleaning up results DataFrame...")

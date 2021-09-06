@@ -21,6 +21,10 @@ object SparkSQLTester extends App {
 
   df.show(5)
 
+<<<<<<< HEAD
+=======
+  
+>>>>>>> 2e5d36825badbee25d49847aa381e71cbbd0b88f
 //    root
 //     |-- id: string (nullable = true)
 //     |-- name: string (nullable = true)
