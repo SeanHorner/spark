@@ -69,7 +69,6 @@ object MainRunner extends App {
       case 11 => ae.analysis11()
       case 12 => ae.analysis12()
       case 13 => ae.analysis13()
-      case 14 => ae.analysis14()
     }
 
     // Cleaning up the temp folder
@@ -106,13 +105,12 @@ object MainRunner extends App {
     + "|   5.  What are some of the most common event topics?                                                      |\n" // <-
     + "|   6.  What is the most popular time when events are created?                                              |\n"
     + "|   7.  Are events with longer durations more popular than shorter durations?                               |\n"
-    + "|   8.                                                                                                      |\n" // <-
-    + "|   9.  Which events have the most RSVPs?                                                                   |\n"
-    + "|  10.  How has event capacity changed over the months/years?                                               |\n" // <-
-    + "|  11.  What is the preferred payment method for events?                                                    |\n" // <-
-    + "|  12.  How has the average cost of events changed over time?                                               |\n"
-    + "|  13.  Has there been a change in planning times for events?                                               |\n"
-    + "|  14.  What is the largest tech-related group on MeetUp.com?                                               |\n" // <-
+    + "|   8.  Which events have the most RSVPs?                                                                   |\n"
+    + "|   9.  How has event capacity changed over the months/years?                                               |\n" // <-
+    + "|  10.  What is the preferred payment method for events?                                                    |\n" // <-
+    + "|  11.  How has the average cost of events changed over time?                                               |\n"
+    + "|  12.  Has there been a change in planning times for events?                                               |\n"
+    + "|  13.  What is the largest tech-related group on MeetUp.com?                                               |\n" // <-
     + "|  To run more than one analysis, enter a comma- or space-separated list.                                   |\n"
     + "| All.  Run all of analyses in order.                                                                       |\n"
     + "| Exit. Exit the program.                                                                                   |\n"
@@ -590,23 +588,8 @@ object MainRunner extends App {
     def analysis8(): Unit = {
       println("Analysis 8 initialized...")
 
-
-
-      println("Cleaning up DataFrames...")
-
-      println("Beginning visualization creation...")
-      /**
-       * Data visualization logic goes here
-       */
-
-      println("*** Analysis finished. ***\n\n")
-    }
-
-    def analysis9(): Unit = {
-      println("Analysis 9 initialized...")
-
       println("Filtering base DataFrame for analysis...")
-      val Q9_df =
+      val Q8_df =
         df.select('name, 'group_name, 'v_name, 'localized_location, 'yes_rsvp_count)
           .orderBy('yes_rsvp_count.desc)
           .limit(5)
@@ -617,14 +600,29 @@ object MainRunner extends App {
        */
 
       println("Saving analysis results...")
-      Q9_df.write.csv("output/temp/Q09_top_rsvps")
-//      new File("output/question_09/").mkdirs()
-      outputCombiner("output/temp/Q09_top_rsvps", "output/question_09" , "top_rsvps")
+      Q8_df.write.csv("output/temp/Q08_top_rsvps")
+//      new File("output/question_08/").mkdirs()
+      outputCombiner("output/temp/Q08_top_rsvps", "output/question_08" , "top_rsvps")
 
-      Q9_df.show()
+      Q8_df.show()
 
       println("Cleaning up DataFrames...")
-      Q9_df.unpersist()
+      Q8_df.unpersist()
+
+      println("*** Analysis finished. ***\n\n")
+    }
+
+    def analysis9(): Unit = {
+      println("Analysis 9 initialized...")
+
+
+
+      println("Cleaning up DataFrames...")
+
+      println("Beginning visualization creation...")
+      /**
+       * Data visualization logic goes here
+       */
 
       println("*** Analysis finished. ***\n\n")
     }
@@ -647,22 +645,7 @@ object MainRunner extends App {
     def analysis11(): Unit = {
       println("Analysis 11 initialized...")
 
-
-
-      println("Cleaning up DataFrames...")
-
-      println("Beginning visualization creation...")
-      /**
-       * Data visualization logic goes here
-       */
-
-      println("*** Analysis finished. ***\n\n")
-    }
-
-    def analysis12(): Unit = {
-      println("Analysis 12 initialized...")
-
-      val Q12_base_df = df
+      val Q11_base_df = df
         .select('id, 'local_date, 'accepts, 'amount)
         .filter('accepts.isNotNull)
         .withColumn("year", 'local_date.substr(0, 4).cast(IntegerType))
@@ -683,7 +666,7 @@ object MainRunner extends App {
       println("Cleaning up base DataFrame...")
       Q12_base_df.unpersist()
 
-      val Q12_results_schema = StructType(
+      val Q11_results_schema = StructType(
         List(
           StructField("year", IntegerType, nullable = false),
           StructField("cash", IntegerType, nullable = false),
@@ -692,14 +675,14 @@ object MainRunner extends App {
         )
       )
 
-      val Q12_results_rdd = spark.sparkContext.parallelize(results_base)
-      val Q12_results_df = spark.createDataFrame(Q12_results_rdd, Q12_results_schema).orderBy('year)
+      val Q11_results_rdd = spark.sparkContext.parallelize(results_base)
+      val Q11_results_df = spark.createDataFrame(Q11_results_rdd, Q11_results_schema).orderBy('year)
 
-      Q12_results_df.show()
+      Q11_results_df.show()
 
       println("Writing results to temp output file...")
-      Q12_results_df.write.csv("output/temp/Q12_results")
-      outputCombiner("output/temp/Q12_results", "output/question_12" , "results")
+      Q12_results_df.write.csv("output/temp/Q11_results")
+      outputCombiner("output/temp/Q11_results", "output/question_11" , "results")
 
       println("Cleaning up results DataFrame...")
       Q12_results_df.unpersist()
@@ -712,9 +695,9 @@ object MainRunner extends App {
       println("*** Analysis finished. ***\n\n")
     }
 
-    def analysis13(): Unit = {
+    def analysis12(): Unit = {
 
-      println("Analysis 13 initialized...")
+      println("Analysis 12 initialized...")
 
       def prepTime(year: Int): Long = {
         val startMillis: Long = new Date(year).getTime
@@ -747,31 +730,31 @@ object MainRunner extends App {
 
       println("Beginning yearly average prep time calculations...")
 
-      var Q13List = List[Long]()
+      var Q12List = List[Long]()
       for(y <- 2003 to 2020) {
         println(s"\tCalculating average prep time for $y...")
-        Q13List = Q13List :+ prepTime(y)
+        Q12List = Q12List :+ prepTime(y)
       }
 
       println("Compiling and creating results DataFrame...")
 
-      val Q13_DF = Seq(
-        (2003, Q13List(0)),  (2004, Q13List(1)),  (2005, Q13List(2)),
-        (2006, Q13List(3)),  (2007, Q13List(4)),  (2008, Q13List(5)),
-        (2009, Q13List(6)),  (2010, Q13List(7)),  (2011, Q13List(8)),
-        (2012, Q13List(9)),  (2013, Q13List(10)), (2014, Q13List(11)),
-        (2015, Q13List(12)), (2016, Q13List(13)), (2017, Q13List(14)),
-        (2018, Q13List(15)), (2019, Q13List(16)), (2020, Q13List(17)),
+      val Q12_DF = Seq(
+        (2003, Q12List(0)),  (2004, Q12List(1)),  (2005, Q12List(2)),
+        (2006, Q12List(3)),  (2007, Q12List(4)),  (2008, Q12List(5)),
+        (2009, Q12List(6)),  (2010, Q12List(7)),  (2011, Q12List(8)),
+        (2012, Q12List(9)),  (2013, Q12List(10)), (2014, Q12List(11)),
+        (2015, Q12List(12)), (2016, Q12List(13)), (2017, Q12List(14)),
+        (2018, Q12List(15)), (2019, Q12List(16)), (2020, Q12List(17)),
       ).toDF("year", "avg_prep_time")
 
-      Q13_DF.show()
+      Q12_DF.show()
 
       println("Writing results to temp file...")
-      Q13_DF.write.csv("output/temp/Q13_results")
-      outputCombiner("output/temp/Q13_results", "output/question_13", "full_set")
+      Q12_DF.write.csv("output/temp/Q12_results")
+      outputCombiner("output/temp/Q12_results", "output/question_12", "full_set")
 
       println("Cleaning up results DataFrame...")
-      Q13_DF.unpersist()
+      Q12_DF.unpersist()
 
       println("Beginning visualization creation...")
       /**
@@ -781,8 +764,8 @@ object MainRunner extends App {
       println("*** Analysis finished. ***\n\n")
     }
 
-    def analysis14(): Unit = {
-      println("Analysis 14 initialized...")
+    def analysis13(): Unit = {
+      println("Analysis 13 initialized...")
 
 
 
