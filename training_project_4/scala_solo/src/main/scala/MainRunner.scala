@@ -654,7 +654,7 @@ object MainRunner extends App {
       for (y <- 2003 to 2020) {
         var temp_seq = Seq[Int](y)
         for(option <- List("cash", "paypal", "wepay")) {
-          temp_seq = temp_seq :+ Q12_base_df
+          temp_seq = temp_seq :+ Q11_base_df
             .filter('year === y)
             .filter('accepts === option)
             .count()
@@ -664,7 +664,7 @@ object MainRunner extends App {
       }
 
       println("Cleaning up base DataFrame...")
-      Q12_base_df.unpersist()
+      Q11_base_df.unpersist()
 
       val Q11_results_schema = StructType(
         List(
@@ -681,11 +681,15 @@ object MainRunner extends App {
       Q11_results_df.show()
 
       println("Writing results to temp output file...")
+<<<<<<< HEAD
       Q12_results_df.write.csv("output/temp/Q11_results")
+=======
+      Q11_results_df.write.csv("output/temp/Q11_results")
+>>>>>>> 2e5d368 (merge conflict workaround)
       outputCombiner("output/temp/Q11_results", "output/question_11" , "results")
 
       println("Cleaning up results DataFrame...")
-      Q12_results_df.unpersist()
+      Q11_results_df.unpersist()
 
       println("Beginning visualization creation...")
       /**
