@@ -1,3 +1,7 @@
+//
+//  This analysis engine requires the all_cities.parquet file located at:
+//  https://drive.google.com/file/d/1ErurkaXa_LqzxXrN8GPabtGywRZK2Xdu/view?usp=sharing
+//
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
