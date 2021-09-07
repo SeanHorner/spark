@@ -1,5 +1,5 @@
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.functions.{collect_set, udf}
 import org.apache.spark.sql.types.{ArrayType, IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
@@ -13,6 +13,7 @@ object SparkSQLTester extends App {
   spark.sparkContext.setLogLevel("ERROR")
 
   import spark.implicits._
+  import org.apache.spark.sql.functions._
 
 
   val baseDf = spark.read.parquet("all_cities.parquet")
@@ -56,22 +57,19 @@ object SparkSQLTester extends App {
 //  |    115124832|Understanding Wor...|Gainesville WordP...|    WordPress-Meetup|5928012|Santa Fe College ...|2013-05-16|   2013-05|     18:00|   Gainesville, FL|          false|  past|        [34]|    null|1368741600000|1366363670000|            21|      null|   null|  null|customize  wordpr...| Gainesville, FL|      EST|         -5|    -18000000|
 //  +-------------+--------------------+--------------------+--------------------+-------+--------------------+----------+----------+----------+------------------+---------------+------+------------+--------+-------------+-------------+--------------+----------+-------+------+--------------------+----------------+---------+-----------+-------------+
 
-  // Q09: event capacity over time
+  // Q13.  Biggest tech meetup group
 
-  val Q09_base_df =
-    df.select('yes_rsvp_count, 'rsvp_limit, 'local_date)
-      .filter('yes_rsvp_count.isNotNull || 'rsvp_limit.isNotNull)
+  val Q13_df =
+    df.select('group_name, 'yes_rsvp_count, 'rsvp_limit)
       .na.fill(0)
-      .withColumn("event_count", 'yes_rsvp_count + 'rsvp_limit)
-      .withColumn("year", 'local_date.substr(0,4).cast(IntegerType))
-      .withColumn("month", 'local_date.substr(6,2).cast(IntegerType))
-//      .withColumn("day", 'local_date.substr(9,2).cast(IntegerType))
-      .groupBy('year, 'month).sum("event_count")
-      .withColumnRenamed("sum(event_count)", "daily_event_attends")
-      .drop('yes_rsvp_count).drop('rsvp_limit).drop('local_date)
-      .orderBy('year, 'month)
+      .groupBy('group_name).agg(sum("yes_rsvp_count"), sum("rsvp_limit"), count("rsvp_limit"))
+      .withColumnRenamed("sum(yes_rsvp_count)", "rsvps")
+      .withColumnRenamed("sum(rsvp_limit)", "limit")
+      .withColumnRenamed("count(rsvp_limit)", "count")
+      .orderBy('count.desc, 'rsvps.desc, 'limit.desc)
 
-  Q09_base_df.show()
+  Q13_df.show()
+
 
 
 

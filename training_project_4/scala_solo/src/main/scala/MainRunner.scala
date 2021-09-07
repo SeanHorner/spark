@@ -53,7 +53,7 @@ object MainRunner extends App {
     if (userInputList.last.equalsIgnoreCase("exit"))
       analysesToRun = List(0)
     else if (userInputList.last.equalsIgnoreCase("all"))
-      analysesToRun = List(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+      analysesToRun = List(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
     else
       analysesToRun = userInputList.map(_.toInt)
 
@@ -105,12 +105,12 @@ object MainRunner extends App {
     + "|   2.  How many upcoming events are being hosted online compared to in-person?                             |\n"
     + "|   3.  What is the trend of events about new technologies vs. older ones?                                  |\n"
     + "|   4.  Which cities hosted the most technology-based events? Which venues?                                 |\n"
-    + "|   5.  What are some of the most common event topics?                                                      |\n" // <-
+    + "|   5.  What are some of the most common event topics?                                                      |\n"
     + "|   6.  What is the most popular time when events are created?                                              |\n"
     + "|   7.  Are events with longer durations more popular than shorter durations?                               |\n"
     + "|   8.  Which events have the most RSVPs?                                                                   |\n"
-    + "|   9.  How has event capacity changed over the months/years?                                               |\n" // <-
-    + "|  10.  What is the preferred payment method for events?                                                    |\n" // <-
+    + "|   9.  How has event capacity changed over the months/years?                                               |\n"
+    + "|  10.  What is the preferred payment method for events?                                                    |\n"
     + "|  11.  How has the average cost of events changed over time?                                               |\n"
     + "|  12.  Has there been a change in planning times for events?                                               |\n"
     + "|  13.  What is the largest tech-related group on MeetUp.com?                                               |\n" // <-
@@ -402,7 +402,6 @@ object MainRunner extends App {
       Q3_results_df.show()
 
       Q3_results_df.write.csv("output/temp/Q3_results")
-//      new File("output/question_03/").mkdirs()
       outputCombiner("output/temp/Q3_results", "output/question_03" , "results")
 
       println("Cleaning up results DataFrame...")
@@ -430,7 +429,6 @@ object MainRunner extends App {
 
 
       eventCountByLocationDf.write.csv("output/temp/Q4_top_locations")
-//      new File("output/question_04/").mkdirs()
       outputCombiner("output/temp/Q4_top_locations", "output/question_04", "top_locations")
 
       println("Cleaning up events by location DataFrame...")
@@ -463,29 +461,28 @@ object MainRunner extends App {
     def analysis5(): Unit = {
       println("Analysis 5 initialized...")
 
-      /**
-       * Topic List
-       *  2: Career & Business
-       *  4: Movements
-       *  6: Education
-       * 12: LGBTQ
-       * 15: Hobbies & Craft
-       * 32: Sports and Fitness
-       * 36: Writing
-       */
-      val Q4_base_df = df
+//       Topic List
+//        2: Career & Business
+//        4: Movements
+//        6: Education
+//       12: LGBTQ
+//       15: Hobbies & Craft
+//       32: Sports and Fitness
+//       36: Writing
+
+      val Q5_base_df = df
         .select('id, 'category_ids)
         .withColumn("category_ids", category_array_converterUDF('category_ids))
         .withColumn("category_count", category_array_counterUDF('category_ids))
         .filter('category_count.isNotNull)
       //    .filter('category_count === 2)
 
-      Q4_base_df.show(10)
-      Q4_base_df.printSchema()
-      println(Q4_base_df.count())
+      Q5_base_df.show(10)
+      Q5_base_df.printSchema()
+      println(Q5_base_df.count())
 
       println("Cleaning up DataFrames...")
-      Q4_base_df.unpersist()
+      Q5_base_df.unpersist()
 
       println("Beginning visualization creation...")
       /**
@@ -604,7 +601,6 @@ object MainRunner extends App {
 
       println("Saving analysis results...")
       Q8_df.write.csv("output/temp/Q08_top_rsvps")
-//      new File("output/question_08/").mkdirs()
       outputCombiner("output/temp/Q08_top_rsvps", "output/question_08" , "top_rsvps")
 
       Q8_df.show()
@@ -625,7 +621,6 @@ object MainRunner extends App {
           .withColumn("event_count", 'yes_rsvp_count + 'rsvp_limit)
           .withColumn("year", 'local_date.substr(0,4).cast(IntegerType))
           .withColumn("month", 'local_date.substr(6,2).cast(IntegerType))
-//        .withColumn("day", 'local_date.substr(9,2).cast(IntegerType))
           .groupBy('year, 'month).sum("event_count")
           .withColumnRenamed("sum(event_count)", "daily_event_attends")
           .drop('yes_rsvp_count).drop('rsvp_limit).drop('local_date)
@@ -649,9 +644,28 @@ object MainRunner extends App {
     def analysis10(): Unit = {
       println("Analysis 10 initialized...")
 
+      val Q10_base_df =
+        df.select('accepts, 'local_date)
+          .filter('accepts.isNotNull || 'local_date.isNotNull)
+          .withColumn("year", 'local_date.substr(0,4).cast(IntegerType))
+          .withColumn("month", 'local_date.substr(6,2).cast(IntegerType))
+          .withColumn("paypal", 'accepts.contains("paypal").cast(IntegerType))
+          .withColumn("cash", 'accepts.contains("cash").cast(IntegerType))
+          .withColumn("wepay", 'accepts.contains("wepay").cast(IntegerType))
+          .filter('paypal.isNotNull || 'cash.isNotNull || 'wepay.isNotNull)
+          .groupBy('year, 'month).sum("paypal", "cash", "wepay")
+          .drop("paypal").drop("cash").drop("wepay").drop('accepts).drop('local_date)
+          .withColumnRenamed("sum(paypal)", "paypal")
+          .withColumnRenamed("sum(cash)", "cash")
+          .withColumnRenamed("sum(wepay)", "wepay")
+          .orderBy('year, 'month)
 
+      println("Saving analysis results...")
+      Q10_base_df.write.csv("output/temp/Q10")
+      outputCombiner("output/temp/Q10", "output/question_10", "daily_accepted_pay_methods")
 
       println("Cleaning up DataFrames...")
+      Q10_base_df.unpersist()
 
       println("Beginning visualization creation...")
       /**
@@ -664,49 +678,22 @@ object MainRunner extends App {
     def analysis11(): Unit = {
       println("Analysis 11 initialized...")
 
-      val Q11_base_df = df
-        .select('id, 'local_date, 'accepts, 'amount)
-        .filter('accepts.isNotNull)
-        .withColumn("year", 'local_date.substr(0, 4).cast(IntegerType))
+      val Q11_df =
+        df.select('amount, 'local_date)
+          .filter('local_date.isNotNull)
+          .na.fill(0)
+          .withColumn("year", 'local_date.substr(0,4).cast(IntegerType))
+          .withColumn("month", 'local_date.substr(6,2).cast(IntegerType))
+          .groupBy('year, 'month).avg("amount")
+          .withColumnRenamed("avg(amount)", "avg_cost")
+          .orderBy('year, 'month)
 
-      var results_base = Seq[Row]()
-      for (y <- 2003 to 2020) {
-        var temp_seq = Seq[Int](y)
-        for(option <- List("cash", "paypal", "wepay")) {
-          temp_seq = temp_seq :+ Q11_base_df
-            .filter('year === y)
-            .filter('accepts === option)
-            .count()
-            .toInt
-        }
-        results_base = results_base :+ Row.fromSeq(temp_seq)
-      }
-
-      println("Cleaning up base DataFrame...")
-      Q11_base_df.unpersist()
-
-      val Q11_results_schema = StructType(
-        List(
-          StructField("year", IntegerType, nullable = false),
-          StructField("cash", IntegerType, nullable = false),
-          StructField("paypal", IntegerType, nullable = false),
-          StructField("wepay", IntegerType, nullable = false)
-        )
-      )
-
-      val Q11_results_rdd = spark.sparkContext.parallelize(results_base)
-      val Q11_results_df = spark.createDataFrame(Q11_results_rdd, Q11_results_schema).orderBy('year)
-
-      Q11_results_df.show()
-
-      println("Writing results to temp output file...")
-
-      Q11_results_df.write.csv("output/temp/Q11_results")
-
-      outputCombiner("output/temp/Q11_results", "output/question_11" , "results")
+      println("Saving analysis results...")
+      Q11_df.write.csv("output/temp/Q11")
+      outputCombiner("output/temp/Q11", "output/question_11" , "avg_attendance_cost")
 
       println("Cleaning up results DataFrame...")
-      Q11_results_df.unpersist()
+      Q11_df.unpersist()
 
       println("Beginning visualization creation...")
       /**
@@ -770,7 +757,7 @@ object MainRunner extends App {
 
       Q12_DF.show()
 
-      println("Writing results to temp file...")
+      println("Saving analysis results...")
       Q12_DF.write.csv("output/temp/Q12_results")
       outputCombiner("output/temp/Q12_results", "output/question_12", "full_set")
 
@@ -788,9 +775,21 @@ object MainRunner extends App {
     def analysis13(): Unit = {
       println("Analysis 13 initialized...")
 
+      val Q13_df =
+        df.select('group_name, 'yes_rsvp_count, 'rsvp_limit)
+          .na.fill(0)
+          .groupBy('group_name).agg(sum("yes_rsvp_count"), sum("rsvp_limit"), count("rsvp_limit"))
+          .withColumnRenamed("sum(yes_rsvp_count)", "rsvps")
+          .withColumnRenamed("sum(rsvp_limit)", "limit")
+          .withColumnRenamed("count(rsvp_limit)", "count")
+          .orderBy('count.desc, 'rsvps.desc, 'limit.desc)
 
+      println("Saving analysis results...")
+      Q13_df.write.csv("output/temp/Q13_results")
+      outputCombiner("output/temp/Q13_results", "output/question_13", "largest_groups")
 
-      println("Cleaning up DataFrames...")
+      println("Cleaning up results DataFrame...")
+      Q13_df.unpersist()
 
       println("Beginning visualization creation...")
       /**
