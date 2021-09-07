@@ -6,9 +6,9 @@ import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-
 import com.cibo.evilplot.plot.aesthetics.DefaultTheme.defaultTheme
 import com.cibo.evilplot.plot._
+import org.apache.spark.sql.catalyst.expressions.aggregate.Max
 
 import scala.io.StdIn
 import java.io.File
@@ -23,6 +23,9 @@ object MainRunner extends App {
   def recursive_delete(file: File): Unit = {
     if(file.isDirectory) {
       file.listFiles.foreach(recursive_delete)
+      file.delete()
+    } else {
+      file.delete()
     }
   }
 
@@ -182,7 +185,7 @@ object MainRunner extends App {
     // *
     // ***********************************************************************************************************
 
-    // Initial data set read in from Parquet file
+    // Initial data set read in from .tsv file
     val baseDf: DataFrame = spark.read.parquet("all_cities.parquet")
 
     // Additional timezone and time offset data
@@ -615,14 +618,30 @@ object MainRunner extends App {
     def analysis9(): Unit = {
       println("Analysis 9 initialized...")
 
-
-
-      println("Cleaning up DataFrames...")
+      val Q09_base_df =
+        df.select('yes_rsvp_count, 'rsvp_limit, 'local_date)
+          .filter('yes_rsvp_count.isNotNull || 'rsvp_limit.isNotNull)
+          .na.fill(0)
+          .withColumn("event_count", 'yes_rsvp_count + 'rsvp_limit)
+          .withColumn("year", 'local_date.substr(0,4).cast(IntegerType))
+          .withColumn("month", 'local_date.substr(6,2).cast(IntegerType))
+//        .withColumn("day", 'local_date.substr(9,2).cast(IntegerType))
+          .groupBy('year, 'month).sum("event_count")
+          .withColumnRenamed("sum(event_count)", "daily_event_attends")
+          .drop('yes_rsvp_count).drop('rsvp_limit).drop('local_date)
+          .orderBy('year, 'month)
 
       println("Beginning visualization creation...")
       /**
        * Data visualization logic goes here
        */
+
+      println("Saving analysis results...")
+      Q09_base_df.write.csv("output/temp/Q09")
+      outputCombiner("output/temp/Q09", "output/question_09" , "daily_event_attendance")
+
+      println("Cleaning up DataFrames...")
+      Q09_base_df.unpersist()
 
       println("*** Analysis finished. ***\n\n")
     }
@@ -681,15 +700,9 @@ object MainRunner extends App {
       Q11_results_df.show()
 
       println("Writing results to temp output file...")
-<<<<<<< HEAD
-<<<<<<< HEAD
-      Q12_results_df.write.csv("output/temp/Q11_results")
-=======
+
       Q11_results_df.write.csv("output/temp/Q11_results")
->>>>>>> 2e5d368 (merge conflict workaround)
-=======
-      Q11_results_df.write.csv("output/temp/Q11_results")
->>>>>>> 2e5d36825badbee25d49847aa381e71cbbd0b88f
+
       outputCombiner("output/temp/Q11_results", "output/question_11" , "results")
 
       println("Cleaning up results DataFrame...")

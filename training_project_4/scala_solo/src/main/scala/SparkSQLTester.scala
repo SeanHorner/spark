@@ -15,16 +15,10 @@ object SparkSQLTester extends App {
   import spark.implicits._
 
 
-  val baseDf = spark.read.parquet("all_cities_data.parquet")
+  val baseDf = spark.read.parquet("all_cities.parquet")
   val timeAdjDf = AnalysisHelper.citiesTimeAdj.toDF("location", "time_zone", "hour_adjust", "millis_adjust")
   val df = baseDf.join(timeAdjDf, $"localized_location" === $"location", "outer")
 
-  df.show(5)
-
-<<<<<<< HEAD
-=======
-  
->>>>>>> 2e5d36825badbee25d49847aa381e71cbbd0b88f
 //    root
 //     |-- id: string (nullable = true)
 //     |-- name: string (nullable = true)
@@ -51,55 +45,34 @@ object SparkSQLTester extends App {
 //     |-- location: string (nullable = true)
 //     |-- time_adjustment: integer (nullable = true)
 
-  // Question 12.  How has the average cost of events changed over time?
+//  df.show(5)
+//  +-------------+--------------------+--------------------+--------------------+-------+--------------------+----------+----------+----------+------------------+---------------+------+------------+--------+-------------+-------------+--------------+----------+-------+------+--------------------+----------------+---------+-----------+-------------+
+//  |           id|                name|          group_name|             urlname|   v_id|              v_name|local_date|date_month|local_time|localized_location|is_online_event|status|category_ids|duration|         time|      created|yes_rsvp_count|rsvp_limit|accepts|amount|         description|        location|time_zone|hour_adjust|millis_adjust|
+//  +-------------+--------------------+--------------------+--------------------+-------+--------------------+----------+----------+----------+------------------+---------------+------+------------+--------+-------------+-------------+--------------+----------+-------+------+--------------------+----------------+---------+-----------+-------------+
+//  |    239675563|   Hello Angular RVA|         Angular RVA|              NG-RVA|   null|                null|2017-06-07|   2017-06|     18:00|  Chesterfield, VA|          false|  past|        [34]| 9000000|1496872800000|1493759483000|            11|      null|   null|  null|kickoff  event  s...|Chesterfield, VA|      EST|         -5|    -18000000|
+//  | qbchhdyrpbhb|  Tuesday Open House|Gainesville Hacke...|gainesville-hacke...|8826022|Gainesville Hacke...|2013-11-05|   2013-11|     19:00|   Gainesville, FL|          false|  past|        [34]|    null|1383696000000|1345560395000|             4|      null|   null|  null|tuesday  nights  ...| Gainesville, FL|      EST|         -5|    -18000000|
+//  | cqrzglytqbcb|  Tuesday Open House|Gainesville Hacke...|gainesville-hacke...|8826022|Gainesville Hacke...|2015-12-01|   2015-12|     19:00|   Gainesville, FL|          false|  past|        [34]|17100000|1449014400000|1431440034000|             1|      null|   null|  null|tuesday  nights  ...| Gainesville, FL|      EST|         -5|    -18000000|
+//  |qmnfslybclbgb|       Board Meeting|Gainesville Hacke...|gainesville-hacke...|8826022|Gainesville Hacke...|2020-08-04|   2020-08|     18:00|   Gainesville, FL|          false|  past|        [34]|    null|1596578400000|1459808812000|             1|      null|   null|  null|regular  board  m...| Gainesville, FL|      EST|         -5|    -18000000|
+//  |    115124832|Understanding Wor...|Gainesville WordP...|    WordPress-Meetup|5928012|Santa Fe College ...|2013-05-16|   2013-05|     18:00|   Gainesville, FL|          false|  past|        [34]|    null|1368741600000|1366363670000|            21|      null|   null|  null|customize  wordpr...| Gainesville, FL|      EST|         -5|    -18000000|
+//  +-------------+--------------------+--------------------+--------------------+-------+--------------------+----------+----------+----------+------------------+---------------+------+------------+--------+-------------+-------------+--------------+----------+-------+------+--------------------+----------------+---------+-----------+-------------+
 
-  def payments_formatter(str: String): List[String] = {
-    if (str.isEmpty)
-      List[String]()
-    else
-      str.split(',').toList
-  }
-  val payments_formatterUDF: UserDefinedFunction = udf[List[String], String](payments_formatter)
+  // Q09: event capacity over time
 
-  val Q12_base_df = df
-    .select('id, 'local_date, 'accepts, 'amount)
-    .filter('accepts.isNotNull)
-    .withColumn("year", 'local_date.substr(0, 4).cast(IntegerType))
+  val Q09_base_df =
+    df.select('yes_rsvp_count, 'rsvp_limit, 'local_date)
+      .filter('yes_rsvp_count.isNotNull || 'rsvp_limit.isNotNull)
+      .na.fill(0)
+      .withColumn("event_count", 'yes_rsvp_count + 'rsvp_limit)
+      .withColumn("year", 'local_date.substr(0,4).cast(IntegerType))
+      .withColumn("month", 'local_date.substr(6,2).cast(IntegerType))
+//      .withColumn("day", 'local_date.substr(9,2).cast(IntegerType))
+      .groupBy('year, 'month).sum("event_count")
+      .withColumnRenamed("sum(event_count)", "daily_event_attends")
+      .drop('yes_rsvp_count).drop('rsvp_limit).drop('local_date)
+      .orderBy('year, 'month)
 
-  var results_base = Seq[Row]()
-  for (y <- 2003 to 2020) {
-    var temp_seq = Seq[Int](y)
-    for(option <- List("cash", "paypal", "wepay")) {
-      temp_seq = temp_seq :+ Q12_base_df
-        .filter('year === y)
-        .filter('accepts === option)
-        .count()
-        .toInt
-    }
-    results_base = results_base :+ Row.fromSeq(temp_seq)
-  }
+  Q09_base_df.show()
 
-  val Q12_results_schema = StructType(
-    List(
-      StructField("year", IntegerType, nullable = false),
-      StructField("Cash", IntegerType, nullable = false),
-      StructField("PayPal", IntegerType, nullable = false),
-      StructField("WePay", IntegerType, nullable = false)
-    )
-  )
 
-  val Q12_results_rdd = spark.sparkContext.parallelize(results_base)
-  val Q12_results_df = spark.createDataFrame(Q12_results_rdd, Q12_results_schema).orderBy('year)
-
-  Q12_results_df.show(20)
-
-  println("\tWriting data to temp output file...")
-  Q12_results_df
-    .write
-    .format("csv")
-    .option("sep", '\t')
-    .save("Q12_results")
-
-//  outputCombiner("Q12_results", "output/question_12/results.tsv")
 
 }
