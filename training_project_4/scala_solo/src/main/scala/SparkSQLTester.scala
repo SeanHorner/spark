@@ -59,18 +59,68 @@ object SparkSQLTester extends App {
 
   // Q13.  Biggest tech meetup group
 
-  val Q13_df =
-    df.select('group_name, 'yes_rsvp_count, 'rsvp_limit)
-      .na.fill(0)
-      .groupBy('group_name).agg(sum("yes_rsvp_count"), sum("rsvp_limit"), count("rsvp_limit"))
-      .withColumnRenamed("sum(yes_rsvp_count)", "rsvps")
-      .withColumnRenamed("sum(rsvp_limit)", "limit")
-      .withColumnRenamed("count(rsvp_limit)", "count")
-      .orderBy('count.desc, 'rsvps.desc, 'limit.desc)
+  // List(1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25, 27, 28, 29, 32, 33, 34, 36)
 
-  Q13_df.show()
+  val Q5_base_df = df
+    .select('local_date, 'category_ids)
+    .filter('category_ids.isNotNull)
+    .withColumn("year", 'local_date.substr(0,4).cast(IntegerType))
+    .withColumn("month", 'local_date.substr(6,2).cast(IntegerType))
+    .withColumn("1", 'category_ids.contains(1))
+    .withColumn("2", 'category_ids.contains(2))
+    .withColumn("3", 'category_ids.contains(3))
+    .withColumn("4", 'category_ids.contains(4))
+    .withColumn("6", 'category_ids.contains(6))
+    .withColumn("8", 'category_ids.contains(8))
+    .withColumn("9", 'category_ids.contains(9))
+    .withColumn("10", 'category_ids.contains(10))
+    .withColumn("11", 'category_ids.contains(11))
+    .withColumn("12", 'category_ids.contains(12))
+    .withColumn("13", 'category_ids.contains(13))
+    .withColumn("14", 'category_ids.contains(14))
+    .withColumn("15", 'category_ids.contains(15))
+    .withColumn("16", 'category_ids.contains(16))
+    .withColumn("21", 'category_ids.contains(21))
+    .withColumn("22", 'category_ids.contains(22))
+    .withColumn("23", 'category_ids.contains(23))
+    .withColumn("24", 'category_ids.contains(24))
+    .withColumn("25", 'category_ids.contains(25))
+    .withColumn("27", 'category_ids.contains(27))
+    .withColumn("28", 'category_ids.contains(28))
+    .withColumn("29", 'category_ids.contains(29))
+    .withColumn("32", 'category_ids.contains(32))
+    .withColumn("33", 'category_ids.contains(33))
+    .withColumn("34", 'category_ids.contains(34))
+    .withColumn("36", 'category_ids.contains(36))
+    .groupBy('year, 'month)
+    .agg(
+      sum("1"),
+      sum("2"),
+      sum("3"),
+      sum("4"),
+      sum("6"),
+      sum("8"),
+      sum("9"),
+      sum("10"),
+      sum("11"),
+      sum("12"),
+      sum("13"),
+      sum("14"),
+      sum("15"),
+      sum("16"),
+      sum("21"),
+      sum("22"),
+      sum("23"),
+      sum("24"),
+      sum("25"),
+      sum("27"),
+      sum("28"),
+      sum("29"),
+      sum("32"),
+      sum("33"),
+      sum("34"),
+      sum("36")
+    )
 
-
-
-
+  Q5_base_df.show()
 }

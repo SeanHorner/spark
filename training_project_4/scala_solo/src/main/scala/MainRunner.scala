@@ -75,7 +75,7 @@ object MainRunner extends App {
     }
 
     // Cleaning up the temp folder
-    recursive_delete(new File("output/temp"))
+//    recursive_delete(new File("output/temp"))
 
   } while (proceed)
 
@@ -256,7 +256,6 @@ object MainRunner extends App {
 
       println("Writing data to temp output file...")
       Q1_results_df.write.csv("output/temp/Q1_results")
-//      new File("output/question_01/").mkdirs()
       outputCombiner("output/temp/Q1_results", "output/question_01", "results")
 
       println("Cleaning up DataFrames...")
@@ -276,41 +275,20 @@ object MainRunner extends App {
       val Q2_base_df =
         df.select('id, 'local_date, 'is_online_event)
           .withColumn("year", 'local_date.substr(0,4).cast(IntegerType))
+          .withColumn("month", 'local_date.substr(6,2).cast(IntegerType))
+          .withColumn("is_online_event", 'is_online_event.cast(IntegerType))
+          .groupBy('year, 'month).agg(sum("is_online_event"), count("local_date"))
+          .withColumnRenamed("count(local_date)", "count")
+          .withColumnRenamed("sum(is_online_event)", "is_online")
+          .withColumn("is_offline", 'count - 'is_online)
+          .drop("count")
+          .orderBy('year, 'month)
 
-      var results = Seq[Row]()
+      Q2_base_df.show(10)
 
-      for (y <- 2003 to 2020) {
-        var temp_seq = Seq[Int](y)
-
-        println(s"Testing year $y...")
-        temp_seq = temp_seq :+ Q2_base_df
-          .filter('year === y)
-          .filter('is_online_event === true)
-          .count()
-          .toInt
-
-        temp_seq = temp_seq :+ Q2_base_df
-          .filter('year === y)
-          .filter('is_online_event === false)
-          .count()
-          .toInt
-
-        results = results :+ Row.fromSeq(temp_seq)
-      }
-
-      val Q2_results_schema = StructType(
-        List(
-          StructField("year", IntegerType, nullable = false),
-          StructField("in_person", IntegerType, nullable = false),
-          StructField("online", IntegerType, nullable = false)))
-      val Q2_results_rdd = spark.sparkContext.parallelize(results)
-      val Q2_results_df = spark.createDataFrame(Q2_results_rdd, Q2_results_schema).orderBy('year)
-
-      Q2_results_df.show()
-
-      Q2_results_df.write.csv("output/temp/Q2_results")
-//      new File("output/question_02/").mkdirs()
-      outputCombiner("output/temp/Q2_results", "output/question_02", "results")
+      println("Saving analysis results...")
+      Q2_base_df.write.csv("output/temp/Q2_results")
+      outputCombiner("output/temp/Q2_results", "output/question_02", "online_vs_offline_events")
 
       println("Cleaning up DataFrames...")
       Q2_base_df.unpersist()
@@ -326,14 +304,94 @@ object MainRunner extends App {
     def analysis3(): Unit = {
       println("Analysis 3 initialized...")
 
-      println("Building base DataFrame...")
+//      val tech_list = List(
+//        "ada", "android", "clojure", "cobol", "dart", "delphi", "fortran", "ios", "java", "javascript",
+//        "kotlin", "labview", "matlab", "pascal", "perl", "php", "powershell", "python", "ruby", "rust",
+//        "scala", "sql", "typescript", "visual basic", "wolfram"
+//      )
+
+      println("Modifying, filtering, and calculating...")
       val Q3_base_df =
         df.select('id, 'local_date, 'description)
           .withColumn("year", 'local_date.substr(0,4).cast(IntegerType))
           .withColumn("month", 'local_date.substr(6,2).cast(IntegerType))
-          .withColumn("tech_mentioned", tech_mentionsUDF('description))
-
-      var results_base = Seq[Row]()
+          .withColumn("ada", 'description.contains("ada").cast(IntegerType))
+          .withColumn("android", 'description.contains("android").cast(IntegerType))
+          .withColumn("clojure", 'description.contains("clojure").cast(IntegerType))
+          .withColumn("cobol", 'description.contains("cobol").cast(IntegerType))
+          .withColumn("dart", 'description.contains("dart").cast(IntegerType))
+          .withColumn("delphi", 'description.contains("delphi").cast(IntegerType))
+          .withColumn("fortran", 'description.contains("fortran").cast(IntegerType))
+          .withColumn("ios", 'description.contains("ios").cast(IntegerType))
+          .withColumn("java", 'description.contains("java").cast(IntegerType))
+          .withColumn("javascript", 'description.contains("javascript").cast(IntegerType))
+          .withColumn("kotlin", 'description.contains("kotlin").cast(IntegerType))
+          .withColumn("labview", 'description.contains("labview").cast(IntegerType))
+          .withColumn("matlab", 'description.contains("matlab").cast(IntegerType))
+          .withColumn("pascal", 'description.contains("pascal").cast(IntegerType))
+          .withColumn("perl", 'description.contains("perl").cast(IntegerType))
+          .withColumn("php", 'description.contains("php").cast(IntegerType))
+          .withColumn("powershell", 'description.contains("powershell").cast(IntegerType))
+          .withColumn("python", 'description.contains("python").cast(IntegerType))
+          .withColumn("ruby", 'description.contains("ruby").cast(IntegerType))
+          .withColumn("rust", 'description.contains("rust").cast(IntegerType))
+          .withColumn("scala", 'description.contains("scala").cast(IntegerType))
+          .withColumn("sql", 'description.contains("sql").cast(IntegerType))
+          .withColumn("typescript", 'description.contains("typescript").cast(IntegerType))
+          .withColumn("visual_basic", 'description.contains("visual basic").cast(IntegerType))
+          .withColumn("wolfram", 'description.contains("wolfram").cast(IntegerType))
+          .groupBy('year, 'month)
+          .agg(
+            sum("ada"),
+            sum("android"),
+            sum("clojure"),
+            sum("cobol"),
+            sum("dart"),
+            sum("delphi"),
+            sum("fortran"),
+            sum("ios"),
+            sum("java"),
+            sum("javascript"),
+            sum("kotlin"),
+            sum("labview"),
+            sum("matlab"),
+            sum("pascal"),
+            sum("perl"),
+            sum("php"),
+            sum("powershell"),
+            sum("python"),
+            sum("ruby"),
+            sum("scala"),
+            sum("sql"),
+            sum("typescript"),
+            sum("visual_basic"),
+            sum("wolfram"))
+          .withColumnRenamed("sum(ada)", "ada")
+          .withColumnRenamed("sum(android)", "android")
+          .withColumnRenamed("sum(clojure)", "clojure")
+          .withColumnRenamed("sum(cobol)", "cobol")
+          .withColumnRenamed("sum(dart)", "dart")
+          .withColumnRenamed("sum(delphi)", "delphi")
+          .withColumnRenamed("sum(fortran)", "fortran")
+          .withColumnRenamed("sum(ios)", "ios")
+          .withColumnRenamed("sum(java)", "java")
+          .withColumnRenamed("sum(javascript)", "javascript")
+          .withColumnRenamed("sum(kotlin)", "kotlin")
+          .withColumnRenamed("sum(labview)", "labview")
+          .withColumnRenamed("sum(matlab)", "matlab")
+          .withColumnRenamed("sum(pascal)", "pascal")
+          .withColumnRenamed("sum(perl)", "perl")
+          .withColumnRenamed("sum(php)", "php")
+          .withColumnRenamed("sum(powershell)", "powershell")
+          .withColumnRenamed("sum(python)", "python")
+          .withColumnRenamed("sum(ruby)", "ruby")
+          .withColumnRenamed("sum(scala)", "scala")
+          .withColumnRenamed("sum(sql)", "sql")
+          .withColumnRenamed("sum(typescript)", "typescript")
+          .withColumnRenamed("sum(visual_basic)", "visual_basic")
+          .withColumnRenamed("sum(wolfram)", "wolfram")
+          .drop("local_date").drop("id").drop("description")
+          .orderBy('year, 'month)
 
       val tech_list = List(
         "ada", "android", "clojure", "cobol", "dart", "delphi", "fortran", "ios", "java", "javascript",
@@ -341,71 +399,12 @@ object MainRunner extends App {
         "scala", "sql", "typescript", "visual basic", "wolfram"
       )
 
-      // Looping through the years in the dataset
-      for (y <- 2003 to 2020) {
-        var temp_seq = Seq[Int](y)
-
-        println(s"Narrowing data set to year $y...")
-        // Looping through the technologies...
-        for (tech <- tech_list) {
-          println(s"\tCounting $tech...")
-          temp_seq = temp_seq :+ Q3_base_df
-            .filter('year === y)
-            .filter('tech_mentioned.contains(tech))
-            .count()
-            .toInt
-        }
-
-        results_base = results_base :+ Row.fromSeq(temp_seq)
-      }
-
-      // Done with base DataFrame
-      Q3_base_df.unpersist()
-
-      val Q3_results_schema = StructType(
-        List(
-          StructField("year", IntegerType, nullable = false),
-          StructField("ada", IntegerType, nullable = false),
-          StructField("android", IntegerType, nullable = false),
-          StructField("clojure", IntegerType, nullable = false),
-          StructField("cobol", IntegerType, nullable = false),
-          StructField("dart", IntegerType, nullable = false),
-          StructField("delphi", IntegerType, nullable = false),
-          StructField("fortran", IntegerType, nullable = false),
-          StructField("ios", IntegerType, nullable = false),
-          StructField("java", IntegerType, nullable = false),
-          StructField("javascript", IntegerType, nullable = false),
-          StructField("kotlin", IntegerType, nullable = false),
-          StructField("labview", IntegerType, nullable = false),
-          StructField("matlab", IntegerType, nullable = false),
-          StructField("pascal", IntegerType, nullable = false),
-          StructField("perl", IntegerType, nullable = false),
-          StructField("php", IntegerType, nullable = false),
-          StructField("powershell", IntegerType, nullable = false),
-          StructField("python", IntegerType, nullable = false),
-          StructField("ruby", IntegerType, nullable = false),
-          StructField("rust", IntegerType, nullable = false),
-          StructField("scala", IntegerType, nullable = false),
-          StructField("sql", IntegerType, nullable = false),
-          StructField("typescript", IntegerType, nullable = false),
-          StructField("visual_basic", IntegerType, nullable = false),
-          StructField("wolfram", IntegerType, nullable = false),
-        )
-      )
-
-      val Q3_results_rdd = spark.sparkContext.parallelize(results_base)
-      Q3_results_rdd.foreach(row => println(row.toString()))
-
-
-      val Q3_results_df = spark.createDataFrame(Q3_results_rdd, Q3_results_schema).orderBy('year)
-
-      Q3_results_df.show()
-
-      Q3_results_df.write.csv("output/temp/Q3_results")
+      println("Saving analysis results...")
+      Q3_base_df.write.csv("output/temp/Q3_results")
       outputCombiner("output/temp/Q3_results", "output/question_03" , "results")
 
       println("Cleaning up results DataFrame...")
-      Q3_results_df.unpersist()
+      Q3_base_df.unpersist()
 
       println("Beginning visualization creation...")
       /**
@@ -419,36 +418,36 @@ object MainRunner extends App {
       println("Analysis 4 initialized...")
 
       println("Calculating number of events by location...")
-      val eventCountByLocationDf =
+      val Q04_location_df =
         df.select('localized_location)
           .groupBy('localized_location)
           .count()
           .orderBy('count.desc)
 
-      eventCountByLocationDf.show(10)
+      Q04_location_df.show(10)
 
 
-      eventCountByLocationDf.write.csv("output/temp/Q4_top_locations")
+      Q04_location_df.write.csv("output/temp/Q4_top_locations")
       outputCombiner("output/temp/Q4_top_locations", "output/question_04", "top_locations")
 
       println("Cleaning up events by location DataFrame...")
-      eventCountByLocationDf.unpersist()
+      Q04_location_df.unpersist()
 
       println("Calculating number of events by venue...")
-      val eventCountByVenueDf: DataFrame =
+      val Q04_venue_df: DataFrame =
         df.select('v_name, 'localized_location)
           .filter('v_name.isNotNull)
           .groupBy('v_name)
           .count()
           .orderBy('count.desc)
 
-      eventCountByVenueDf.show(10)
+      Q04_venue_df.show(10)
 
-      eventCountByVenueDf.write.csv("output/temp/Q4_top_venues")
+      Q04_venue_df.write.csv("output/temp/Q4_top_venues")
       outputCombiner("output/temp/Q4_top_venues", "output/question_04", "top_venues")
 
       println("Cleaning up events by venue DataFrame...")
-      eventCountByVenueDf.unpersist()
+      Q04_venue_df.unpersist()
 
       println("Beginning visualization creation...")
       /**
@@ -470,19 +469,21 @@ object MainRunner extends App {
 //       32: Sports and Fitness
 //       36: Writing
 
-      val Q5_base_df = df
-        .select('id, 'category_ids)
-        .withColumn("category_ids", category_array_converterUDF('category_ids))
-        .withColumn("category_count", category_array_counterUDF('category_ids))
-        .filter('category_count.isNotNull)
-      //    .filter('category_count === 2)
+//      val Q5_base_df = df
+//        .select('id, 'category_ids)
+//        .filter('category_ids.isNotNull)
+//        .withColumn("category_ids", category_array_converterUDF('category_ids))
+//        .withColumn("category_count", category_array_counterUDF('category_ids))
+//
+//      println("Saving analysis results...")
+//      Q5_base_df.show(10)
+//      Q5_base_df.printSchema()
+//      println(Q5_base_df.count())
 
-      Q5_base_df.show(10)
-      Q5_base_df.printSchema()
-      println(Q5_base_df.count())
+      println("WARNING: This analysis currently offline for repairs.")
 
       println("Cleaning up DataFrames...")
-      Q5_base_df.unpersist()
+//      Q5_base_df.unpersist()
 
       println("Beginning visualization creation...")
       /**
@@ -504,9 +505,10 @@ object MainRunner extends App {
           .count()
           .orderBy('count.desc)
 
+      Q6_byCount.show(10)
+
       println("Writing the ranked dataset to temp file...")
       Q6_byCount.write.csv("output/temp/Q6_byCount")
-//      new File("output/question_06/").mkdirs()
       outputCombiner("output/temp/Q6_byCount", "output/question_06", "by_count" )
 
       println("Writing the chronological dataset to temp file...")
@@ -540,11 +542,10 @@ object MainRunner extends App {
           .orderBy( 'count.desc )
           .limit( 20 )
 
-      Q7_byCount.show(20)
+      Q7_byCount.show(10)
 
-      println("Writing results to temp file...")
+      println("Saving analysis results...")
       Q7_byCount.write.csv("output/temp/Q7_byCount")
-//      new File("output/question_07/").mkdirs()
       outputCombiner("output/temp/Q7_byCount", "output/question_07", "by_count")
 
       println("Cleaning up DataFrame...")
@@ -558,6 +559,8 @@ object MainRunner extends App {
           .groupBy( 'mins_duration )
           .count()
           .orderBy( 'mins_duration )
+
+      Q7_fullSet.show(10)
 
       println("Writing chronological data set for the first 24 hours to temp file...")
       Q7_fullSet
@@ -589,24 +592,24 @@ object MainRunner extends App {
       println("Analysis 8 initialized...")
 
       println("Filtering base DataFrame for analysis...")
-      val Q8_df =
+      val Q08_df =
         df.select('name, 'group_name, 'v_name, 'localized_location, 'yes_rsvp_count)
           .orderBy('yes_rsvp_count.desc)
           .limit(5)
+
+      Q08_df.show(5)
+
+      println("Saving analysis results...")
+      Q08_df.write.csv("output/temp/Q08_top_rsvps")
+      outputCombiner("output/temp/Q08_top_rsvps", "output/question_08" , "top_rsvps")
+
+      println("Cleaning up DataFrames...")
+      Q08_df.unpersist()
 
       println("Beginning visualization creation...")
       /**
        * Data visualization logic goes here
        */
-
-      println("Saving analysis results...")
-      Q8_df.write.csv("output/temp/Q08_top_rsvps")
-      outputCombiner("output/temp/Q08_top_rsvps", "output/question_08" , "top_rsvps")
-
-      Q8_df.show()
-
-      println("Cleaning up DataFrames...")
-      Q8_df.unpersist()
 
       println("*** Analysis finished. ***\n\n")
     }
@@ -626,11 +629,6 @@ object MainRunner extends App {
           .drop('yes_rsvp_count).drop('rsvp_limit).drop('local_date)
           .orderBy('year, 'month)
 
-      println("Beginning visualization creation...")
-      /**
-       * Data visualization logic goes here
-       */
-
       println("Saving analysis results...")
       Q09_base_df.write.csv("output/temp/Q09")
       outputCombiner("output/temp/Q09", "output/question_09" , "daily_event_attendance")
@@ -638,12 +636,18 @@ object MainRunner extends App {
       println("Cleaning up DataFrames...")
       Q09_base_df.unpersist()
 
+      println("Beginning visualization creation...")
+      /**
+       * Data visualization logic goes here
+       */
+
       println("*** Analysis finished. ***\n\n")
     }
 
     def analysis10(): Unit = {
       println("Analysis 10 initialized...")
 
+      println("Filtering and calculating...")
       val Q10_base_df =
         df.select('accepts, 'local_date)
           .filter('accepts.isNotNull || 'local_date.isNotNull)
@@ -659,6 +663,9 @@ object MainRunner extends App {
           .withColumnRenamed("sum(cash)", "cash")
           .withColumnRenamed("sum(wepay)", "wepay")
           .orderBy('year, 'month)
+
+      println("Showing sample of results...")
+      Q10_base_df.show(10)
 
       println("Saving analysis results...")
       Q10_base_df.write.csv("output/temp/Q10")
@@ -678,6 +685,7 @@ object MainRunner extends App {
     def analysis11(): Unit = {
       println("Analysis 11 initialized...")
 
+      println("Filtering and calculating...")
       val Q11_df =
         df.select('amount, 'local_date)
           .filter('local_date.isNotNull)
@@ -687,6 +695,9 @@ object MainRunner extends App {
           .groupBy('year, 'month).avg("amount")
           .withColumnRenamed("avg(amount)", "avg_cost")
           .orderBy('year, 'month)
+
+      println("Showing sample of results...")
+      Q11_df.show(10)
 
       println("Saving analysis results...")
       Q11_df.write.csv("output/temp/Q11")
@@ -746,7 +757,7 @@ object MainRunner extends App {
 
       println("Compiling and creating results DataFrame...")
 
-      val Q12_DF = Seq(
+      val Q12_df = Seq(
         (2003, Q12List(0)),  (2004, Q12List(1)),  (2005, Q12List(2)),
         (2006, Q12List(3)),  (2007, Q12List(4)),  (2008, Q12List(5)),
         (2009, Q12List(6)),  (2010, Q12List(7)),  (2011, Q12List(8)),
@@ -755,14 +766,15 @@ object MainRunner extends App {
         (2018, Q12List(15)), (2019, Q12List(16)), (2020, Q12List(17)),
       ).toDF("year", "avg_prep_time")
 
-      Q12_DF.show()
+      println("Showing sample of results...")
+      Q12_df.show(10)
 
       println("Saving analysis results...")
-      Q12_DF.write.csv("output/temp/Q12_results")
+      Q12_df.write.csv("output/temp/Q12_results")
       outputCombiner("output/temp/Q12_results", "output/question_12", "full_set")
 
       println("Cleaning up results DataFrame...")
-      Q12_DF.unpersist()
+      Q12_df.unpersist()
 
       println("Beginning visualization creation...")
       /**
@@ -783,6 +795,9 @@ object MainRunner extends App {
           .withColumnRenamed("sum(rsvp_limit)", "limit")
           .withColumnRenamed("count(rsvp_limit)", "count")
           .orderBy('count.desc, 'rsvps.desc, 'limit.desc)
+
+      println("Showing sample of results...")
+      Q13_df.show(10)
 
       println("Saving analysis results...")
       Q13_df.write.csv("output/temp/Q13_results")
