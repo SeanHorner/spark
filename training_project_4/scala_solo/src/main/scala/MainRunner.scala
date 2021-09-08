@@ -129,7 +129,7 @@ object MainRunner extends App {
 
   class AnalysisEngine {
 
-    // Here initializing the SparkContext for the
+    // Here initializing the SparkContext for the AnalysisEngine to run queries through
     val spark: SparkSession = SparkSession.builder()
       .appName("Meetup Trends Analysis Engine")
       .master("local[4]")
