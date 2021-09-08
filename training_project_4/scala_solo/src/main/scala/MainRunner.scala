@@ -75,7 +75,7 @@ object MainRunner extends App {
     }
 
     // Cleaning up the temp folder
-//    recursive_delete(new File("output/temp"))
+    recursive_delete(new File("output/temp"))
 
   } while (proceed)
 
@@ -145,23 +145,6 @@ object MainRunner extends App {
     // *
     // ***********************************************************************************************************
 
-    // UDF to find out which  [Analysis 3]
-    def tech_mentions(desc: String): String = {
-      var tech_seq = ""
-      val tech_list = List(
-        "ada", "android", "clojure", "cobol", "dart", "delphi", "fortran", "ios", "java", "javascript",
-        "kotlin", "labview", "matlab", "pascal", "perl", "php", "powershell", "python", "ruby", "rust",
-        "scala", "sql", "typescript", "visual basic", "wolfram"
-      )
-      for(tech <- tech_list)
-        if(desc.toLowerCase.split(" ").map(_.trim).contains(tech))
-          tech_seq += s"$tech "
-
-      tech_seq
-    }
-
-    val tech_mentionsUDF: UserDefinedFunction = udf[String, String](tech_mentions)
-
     // Pair of UDFs to convert the category array to integers and count the number of categories [Analysis 5]
     def category_array_converter(cat_list: List[Long]): List[Int] = cat_list.map(_.toInt)
     val category_array_converterUDF: UserDefinedFunction = udf[List[Int], List[Long]](category_array_converter)
@@ -211,55 +194,22 @@ object MainRunner extends App {
 
       println("Building the base DataFrame...")
       val Q1_base_df =
-        df.select('id, 'local_date)
+        df.select('local_date)
+          .filter('local_date.isNotNull)
           .withColumn("year", 'local_date.substr(0,4).cast(IntegerType))
           .withColumn("month", 'local_date.substr(6,2).cast(IntegerType))
+          .groupBy('year, 'month)
+          .count()
+          .orderBy('year, 'month)
 
-      println("Looping through years and months for count...")
-      var results_base = Seq[Row]()
-      for (y <- 2003 to 2020) {
-        println(s"\tFor year $y...")
-        var temp_seq = Seq[Int](y)
-        for(m <- 1 to 12) {
-          println(s"\t..month $m...")
-          temp_seq = temp_seq :+ Q1_base_df
-            .filter('year === y)
-            .filter('month === m)
-            .count()
-            .toInt
-        }
-        results_base = results_base :+ Row.fromSeq(temp_seq)
-      }
-
-      val Q1_results_schema = StructType(
-        List(
-          StructField("year", IntegerType, nullable = false),
-          StructField("Jan", IntegerType, nullable = false),
-          StructField("Feb", IntegerType, nullable = false),
-          StructField("Mar", IntegerType, nullable = false),
-          StructField("Apr", IntegerType, nullable = false),
-          StructField("May", IntegerType, nullable = false),
-          StructField("Jun", IntegerType, nullable = false),
-          StructField("Jul", IntegerType, nullable = false),
-          StructField("Aug", IntegerType, nullable = false),
-          StructField("Sep", IntegerType, nullable = false),
-          StructField("Oct", IntegerType, nullable = false),
-          StructField("Nov", IntegerType, nullable = false),
-          StructField("Dec", IntegerType, nullable = false)
-        )
-      )
-
-      val Q1_results_rdd = spark.sparkContext.parallelize(results_base)
-      val Q1_results_df = spark.createDataFrame(Q1_results_rdd, Q1_results_schema).orderBy('year)
-
-      Q1_results_df.show()
+      Q1_base_df.show()
 
       println("Writing data to temp output file...")
-      Q1_results_df.write.csv("output/temp/Q1_results")
+      Q1_base_df.write.csv("output/temp/Q1_results")
       outputCombiner("output/temp/Q1_results", "output/question_01", "results")
 
       println("Cleaning up DataFrames...")
-      Q1_results_df.unpersist()
+      Q1_base_df.unpersist()
 
       println("Beginning visualization creation...")
       /**
@@ -309,8 +259,7 @@ object MainRunner extends App {
 //      val tech_list = List(
 //        "ada", "android", "clojure", "cobol", "dart", "delphi", "fortran", "ios", "java", "javascript",
 //        "kotlin", "labview", "matlab", "pascal", "perl", "php", "powershell", "python", "ruby", "rust",
-//        "scala", "sql", "typescript", "visual basic", "wolfram"
-//      )
+//        "scala", "sql", "typescript", "visual basic", "wolfram")
 
       println("Modifying, filtering, and calculating...")
       val Q3_base_df =
@@ -344,30 +293,14 @@ object MainRunner extends App {
           .withColumn("wolfram", 'description.contains("wolfram").cast(IntegerType))
           .groupBy('year, 'month)
           .agg(
-            sum("ada"),
-            sum("android"),
-            sum("clojure"),
-            sum("cobol"),
-            sum("dart"),
-            sum("delphi"),
-            sum("fortran"),
-            sum("ios"),
-            sum("java"),
-            sum("javascript"),
-            sum("kotlin"),
-            sum("labview"),
-            sum("matlab"),
-            sum("pascal"),
-            sum("perl"),
-            sum("php"),
-            sum("powershell"),
-            sum("python"),
-            sum("ruby"),
-            sum("scala"),
-            sum("sql"),
-            sum("typescript"),
-            sum("visual_basic"),
-            sum("wolfram"))
+            sum("ada"),         sum("android"),       sum("clojure"),
+            sum("cobol"),       sum("dart"),          sum("delphi"),
+            sum("fortran"),     sum("ios"),           sum("java"),
+            sum("javascript"),  sum("kotlin"),        sum("labview"),
+            sum("matlab"),      sum("pascal"),        sum("perl"),
+            sum("php"),         sum("powershell"),    sum("python"),
+            sum("ruby"),        sum("scala"),         sum("sql"),
+            sum("typescript"),  sum("visual_basic"),  sum("wolfram"))
           .withColumnRenamed("sum(ada)", "ada")
           .withColumnRenamed("sum(android)", "android")
           .withColumnRenamed("sum(clojure)", "clojure")
@@ -394,12 +327,6 @@ object MainRunner extends App {
           .withColumnRenamed("sum(wolfram)", "wolfram")
           .drop("local_date").drop("id").drop("description")
           .orderBy('year, 'month)
-
-      val tech_list = List(
-        "ada", "android", "clojure", "cobol", "dart", "delphi", "fortran", "ios", "java", "javascript",
-        "kotlin", "labview", "matlab", "pascal", "perl", "php", "powershell", "python", "ruby", "rust",
-        "scala", "sql", "typescript", "visual basic", "wolfram"
-      )
 
       println("Saving analysis results to temp file...")
       Q3_base_df.write.csv("output/temp/Q3_results")
