@@ -1,7 +1,10 @@
+import SparkSQLTester.df
+import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 
 import java.io.File
+import java.util.Date
 
 object AltAnalyses extends App {
 
@@ -91,6 +94,73 @@ object AltAnalyses extends App {
 
     println("Cleaning up DataFrames...")
     Q1_results_df.unpersist()
+
+    println("Beginning visualization creation...")
+    /**
+     * Data visualization logic goes here
+     */
+
+    println("*** Analysis finished. ***\n\n")
+  }
+
+  def alt_analysis12(df: DataFrame): Unit = {
+    def prepTime(year: Int): Long = {
+      val startMillis: Long = new Date(year).getTime
+      val endMillis: Long = new Date(year + 1).getTime
+
+      val step1_DF =
+        df
+          .filter(df("created").isNotNull && df("time").isNotNull)
+          .filter(df("time") > startMillis && df("time") <= endMillis)
+          .withColumn("prep_period_mins", (df("time") - df("created")) / 600000)
+
+      val step2_DF =
+        step1_DF
+          .filter(df("prep_period_mins") >= 0)
+          .groupBy(df("prep_period_mins"))
+          .count()
+          .withColumn("prep_time_product", 'prep_period_mins * 'count)
+
+      val total_prep_time: Long =
+        step2_DF.agg(sum("prep_time_product")).first.getLong(0)
+
+      val total_events: Long =
+        step2_DF.agg(sum("count")).first.getLong(0)
+
+      step1_DF.unpersist()
+      step2_DF.unpersist()
+
+      total_prep_time / total_events
+    }
+
+    println("Beginning yearly average prep time calculations...")
+
+    var Q12List = List[Long]()
+    for(y <- 2003 to 2020) {
+      println(s"\tCalculating average prep time for $y...")
+      Q12List = Q12List :+ prepTime(y)
+    }
+
+    println("Compiling and creating results DataFrame...")
+
+    val Q12_df = Seq(
+      (2003, Q12List(0)),  (2004, Q12List(1)),  (2005, Q12List(2)),
+      (2006, Q12List(3)),  (2007, Q12List(4)),  (2008, Q12List(5)),
+      (2009, Q12List(6)),  (2010, Q12List(7)),  (2011, Q12List(8)),
+      (2012, Q12List(9)),  (2013, Q12List(10)), (2014, Q12List(11)),
+      (2015, Q12List(12)), (2016, Q12List(13)), (2017, Q12List(14)),
+      (2018, Q12List(15)), (2019, Q12List(16)), (2020, Q12List(17)),
+    ).toDF("year", "avg_prep_time")
+
+    println("Showing sample of results...")
+    Q12_df.show(10)
+
+    println("Saving analysis results to temp file...")
+    Q12_df.write.option("header", "true").csv("output/temp/Q12_results")
+    outputCombiner("output/temp/Q12_results", "output/question_12", "full_set")
+
+    println("Cleaning up results DataFrame...")
+    Q12_df.unpersist()
 
     println("Beginning visualization creation...")
     /**

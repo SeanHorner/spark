@@ -1,12 +1,11 @@
-import java.io.{BufferedWriter, File, FileWriter, PrintWriter}
+import java.io.{File, FileWriter, PrintWriter}
 
 object OutputCombinerTester extends App {
 
   def outputCombiner(inPath: String, outPath: String, title: String, header: Boolean = true): Unit = {
-    // Ensuring the output path is a correctly named filetype, ending in either .tsv or .csv.
     println(s"Moving temp data files to: $outPath/$title.csv")
 
-    // Opening the home directory
+    // Opening the input directory
     val directory = new File(inPath)
 
     // Creating a list of all .csv files in the input directory
@@ -14,7 +13,8 @@ object OutputCombinerTester extends App {
       .listFiles()
       .filter(_.toString.endsWith(".csv"))
 
-    // creating a file writer object to write each partial csv into one temp.csv
+    // creating a file writer object to write each partial csv into one temp file
+    // NOTE: here a .txt file is being used for coalescing the lines for easier formatting
     val file = new File(s"$inPath/temp.txt")
     val writer = new PrintWriter(new FileWriter(file))
 
@@ -33,11 +33,11 @@ object OutputCombinerTester extends App {
       // opening the file as a buffered source, reading the lines from it, then writing
       // the lines to the buffered writer object
       val bufferedSource = scala.io.Source.fromFile(csv_file)
+
       // if the header flag is active, then the first line of every csv file can be
-      // skipped, otherwise just write every line to the composite
+      // dropped/skipped, otherwise just write every line to the composite
       if (header) {
         for (line <- bufferedSource.getLines().drop(1)) {
-          println(line)
           writer.write(line)
           writer.write('\n')
         }
@@ -51,8 +51,8 @@ object OutputCombinerTester extends App {
     }
     writer.close()
 
-    // creating the desired output directory then moving the temp file to the desired
-    // output directory and renaming the temp file to the desired title.
+    // creating the desired output directory then moving the temp file to that directory
+    // and renaming the temp file to the desired title
     new File(outPath).mkdirs()
     val temp_output = new File(s"$inPath/temp.txt")
     temp_output.renameTo(new File(s"$outPath/$title.csv"))
