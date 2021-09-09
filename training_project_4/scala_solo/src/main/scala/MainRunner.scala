@@ -11,7 +11,7 @@ import com.cibo.evilplot.plot._
 import org.apache.spark.sql.catalyst.expressions.aggregate.Max
 
 import scala.io.StdIn
-import java.io.File
+import java.io.{File, FileWriter, PrintWriter}
 import java.util.Date
 
 object MainRunner extends App {
@@ -28,9 +28,6 @@ object MainRunner extends App {
       file.delete()
     }
   }
-
-//  val output = new File("output")
-//  recursive_delete(output)
 
   val ae = new AnalysisEngine
 
@@ -55,7 +52,7 @@ object MainRunner extends App {
     else if (userInputList.last.equalsIgnoreCase("all"))
       analysesToRun = List(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
     else
-      analysesToRun = userInputList.map(_.toInt)
+      analysesToRun = userInputList.map(_.toInt).sorted
 
     analysesToRun.foreach {
       case  0 => proceed = false
@@ -205,7 +202,7 @@ object MainRunner extends App {
       Q1_base_df.show()
 
       println("Writing data to temp output file...")
-      Q1_base_df.write.csv("output/temp/Q1_results")
+      Q1_base_df.write.option("header", "true").csv("output/temp/Q1_results")
       outputCombiner("output/temp/Q1_results", "output/question_01", "results")
 
       println("Cleaning up DataFrames...")
@@ -223,7 +220,8 @@ object MainRunner extends App {
       println("Analysis 2 initialized...")
 
       val Q2_base_df =
-        df.select('id, 'local_date, 'is_online_event)
+        df.select('local_date, 'is_online_event)
+          .filter('local_date.isNotNull)
           .withColumn("year", 'local_date.substr(0,4).cast(IntegerType))
           .withColumn("month", 'local_date.substr(6,2).cast(IntegerType))
           .withColumn("is_online_event", 'is_online_event.cast(IntegerType))
@@ -237,7 +235,7 @@ object MainRunner extends App {
       Q2_base_df.show(10)
 
       println("Saving analysis results to temp file...")
-      Q2_base_df.write.csv("output/temp/Q2_results")
+      Q2_base_df.write.option("header", "true").csv("output/temp/Q2_results")
       outputCombiner("output/temp/Q2_results", "output/question_02", "online_vs_offline_events")
 
       println("Cleaning up DataFrames...")
@@ -329,7 +327,7 @@ object MainRunner extends App {
           .orderBy('year, 'month)
 
       println("Saving analysis results to temp file...")
-      Q3_base_df.write.csv("output/temp/Q3_results")
+      Q3_base_df.write.option("header", "true").csv("output/temp/Q3_results")
       outputCombiner("output/temp/Q3_results", "output/question_03" , "results")
 
       println("Cleaning up results DataFrame...")
@@ -372,7 +370,7 @@ object MainRunner extends App {
 
       Q04_venue_df.show(10)
 
-      Q04_venue_df.write.csv("output/temp/Q4_top_venues")
+      Q04_venue_df.write.option("header", "true").csv("output/temp/Q4_top_venues")
       outputCombiner("output/temp/Q4_top_venues", "output/question_04", "top_venues")
 
       println("Cleaning up events by venue DataFrame...")
@@ -469,7 +467,7 @@ object MainRunner extends App {
       Q5_base_df.show(10)
 
       println("Saving analysis results to temp file...")
-      Q5_base_df.write.csv("output/temp/Q5_results")
+      Q5_base_df.write.option("header", "true").csv("output/temp/Q5_results")
       outputCombiner("output/temp/Q5_results", "output/question_05" , "topic_mentions_over_time")
 
       println("Cleaning up DataFrames...")
@@ -498,13 +496,13 @@ object MainRunner extends App {
       Q6_byCount.show(10)
 
       println("Writing the ranked dataset to temp file...")
-      Q6_byCount.write.csv("output/temp/Q6_byCount")
+      Q6_byCount.write.option("header", "true").csv("output/temp/Q6_byCount")
       outputCombiner("output/temp/Q6_byCount", "output/question_06", "by_count" )
 
       println("Writing the chronological dataset to temp file...")
       Q6_byCount
         .orderBy('minute_of_day_created)     // Reordering the dataset to chronological order
-        .write.csv("output/temp/Q6_chronological")
+        .write.option("header", "true").csv("output/temp/Q6_chronological")
       outputCombiner("output/temp/Q6_chronological", "output/question_06", "by_minute" )
 
       println("Cleaning up DataFrames...")
@@ -535,7 +533,7 @@ object MainRunner extends App {
       Q7_byCount.show(10)
 
       println("Saving analysis results to temp file...")
-      Q7_byCount.write.csv("output/temp/Q7_byCount")
+      Q7_byCount.write.option("header", "true").csv("output/temp/Q7_byCount")
       outputCombiner("output/temp/Q7_byCount", "output/question_07", "by_count")
 
       println("Cleaning up DataFrame...")
@@ -556,7 +554,7 @@ object MainRunner extends App {
       Q7_fullSet
         .select('mins_duration, 'count)
         .filter('mins_duration <= 1440)
-        .write.csv("output/temp/Q7_firstDay")
+        .write.option("header", "true").csv("output/temp/Q7_firstDay")
       outputCombiner( "output/temp/Q7_firstDay", "output/question_07", "first_day" )
 
       // Full set of results
@@ -564,7 +562,7 @@ object MainRunner extends App {
 
       Q7_fullSet
         .select( 'mins_duration, 'count )
-        .write.csv("output/temp/Q7_fullSet")
+        .write.option("header", "true").csv("output/temp/Q7_fullSet")
       outputCombiner("output/temp/Q7_fullSet", "output/question_07", "full_set")
 
       println("Cleaning up DataFrames...")
@@ -590,7 +588,7 @@ object MainRunner extends App {
       Q08_df.show(5)
 
       println("Saving analysis results to temp file...")
-      Q08_df.write.csv("output/temp/Q08_top_rsvps")
+      Q08_df.write.option("header", "true").csv("output/temp/Q08_top_rsvps")
       outputCombiner("output/temp/Q08_top_rsvps", "output/question_08" , "top_rsvps")
 
       println("Cleaning up DataFrames...")
@@ -620,7 +618,7 @@ object MainRunner extends App {
           .orderBy('year, 'month)
 
       println("Saving analysis results to temp file...")
-      Q09_base_df.write.csv("output/temp/Q09")
+      Q09_base_df.write.option("header", "true").csv("output/temp/Q09")
       outputCombiner("output/temp/Q09", "output/question_09" , "daily_event_attendance")
 
       println("Cleaning up DataFrames...")
@@ -658,7 +656,7 @@ object MainRunner extends App {
       Q10_base_df.show(10)
 
       println("Saving analysis results to temp file...")
-      Q10_base_df.write.csv("output/temp/Q10")
+      Q10_base_df.write.option("header", "true").csv("output/temp/Q10")
       outputCombiner("output/temp/Q10", "output/question_10", "daily_accepted_pay_methods")
 
       println("Cleaning up DataFrames...")
@@ -690,7 +688,7 @@ object MainRunner extends App {
       Q11_df.show(10)
 
       println("Saving analysis results to temp file...")
-      Q11_df.write.csv("output/temp/Q11")
+      Q11_df.write.option("header", "true").csv("output/temp/Q11")
       outputCombiner("output/temp/Q11", "output/question_11" , "avg_attendance_cost")
 
       println("Cleaning up results DataFrame...")
@@ -760,7 +758,7 @@ object MainRunner extends App {
       Q12_df.show(10)
 
       println("Saving analysis results to temp file...")
-      Q12_df.write.csv("output/temp/Q12_results")
+      Q12_df.write.option("header", "true").csv("output/temp/Q12_results")
       outputCombiner("output/temp/Q12_results", "output/question_12", "full_set")
 
       println("Cleaning up results DataFrame...")
@@ -790,7 +788,7 @@ object MainRunner extends App {
       Q13_df.show(10)
 
       println("Saving analysis results to temp file...")
-      Q13_df.write.csv("output/temp/Q13_results")
+      Q13_df.write.option("header", "true").csv("output/temp/Q13_results")
       outputCombiner("output/temp/Q13_results", "output/question_13", "largest_groups")
 
       println("Cleaning up results DataFrame...")
@@ -810,30 +808,59 @@ object MainRunner extends App {
     // *
     // ***********************************************************************************************************
 
-    def outputCombiner(inPath: String, outPath: String, title: String): Unit = {
+    def outputCombiner(inPath: String, outPath: String, title: String, header: Boolean = true): Unit = {
       // Ensuring the output path is a correctly named filetype, ending in either .tsv or .csv.
       println(s"Moving temp data files to: $outPath/$title.csv")
 
       // Opening the home directory
       val directory = new File(inPath)
 
-      // Created a Regex expression to look for .csv parts
-      val newFileRegex = ".*part-00000.*.csv"
-
-      // Creating one long string containing all of the partial .csv files as one long string.
-      val tmpTsvFile = directory
+      // Creating a list of all .csv files in the input directory
+      val csv_files = directory
         .listFiles()
-        .filter(_.toString.matches(newFileRegex))(0)
-        .toString
+        .filter(_.toString.endsWith(".csv"))
 
-      // Creating a file from the combined part files, using the File(s: String) constructor,
-      // and then renaming that file to the desired output.
+      // creating a file writer object to write each partial csv into one temp.csv
+      val file = new File(s"$inPath/temp.txt")
+      val writer = new PrintWriter(new FileWriter(file))
+
+      // whether or not the csv files have headers, the first needs to be written
+      // line for line (i.e. if it has headers, the headers need to be written)
+      val bufferedSource = scala.io.Source.fromFile(csv_files(0))
+      val lines = bufferedSource.getLines()
+      for (line <- lines) {
+        writer.write(line)
+        writer.write('\n')
+      }
+      bufferedSource.close()
+
+      // now loop through every line in every csv_file other than the first one
+      for (csv_file <- csv_files.drop(1)) {
+        // opening the file as a buffered source, reading the lines from it, then writing
+        // the lines to the buffered writer object
+        val bufferedSource = scala.io.Source.fromFile(csv_file)
+        // if the header flag is active, then the first line of every csv file can be
+        // skipped, otherwise just write every line to the composite
+        if (header) {
+          for (line <- bufferedSource.getLines().drop(1)) {
+            writer.write(line)
+            writer.write('\n')
+          }
+        } else {
+          for (line <- bufferedSource.getLines()) {
+            writer.write(line)
+            writer.write('\n')
+          }
+        }
+        bufferedSource.close()
+      }
+      writer.close()
+
+      // creating the desired output directory then moving the temp file to the desired
+      // output directory and renaming the temp file to the desired title.
       new File(outPath).mkdirs()
-      new File(tmpTsvFile).renameTo(new File(s"$outPath/$title.csv"))
-
-      // Directory clean up, deleting each file in the directory then the directory itself.
-      directory.listFiles.foreach(f => f.delete())
-      directory.delete()
+      val temp_output = new File(s"$inPath/temp.txt")
+      temp_output.renameTo(new File(s"$outPath/$title.csv"))
     }
   }
 }
