@@ -58,5 +58,5 @@ object OutputCombinerTester extends App {
     temp_output.renameTo(new File(s"$outPath/$title.csv"))
   }
 
-  outputCombiner("output/temp/Q2_results", "output/question_02", "results_alt", header = true)
+  outputCombiner("output/test/Q1_results", "output/test/question_01", "results", header = false)
 }

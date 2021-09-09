@@ -1,4 +1,5 @@
-import org.apache.spark.sql.{SparkSession}
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.expressions.UserDefinedFunction
 
 
 object SparkSQLTester extends App {
@@ -54,24 +55,29 @@ object SparkSQLTester extends App {
 //  |    115124832|Understanding Wor...|Gainesville WordP...|    WordPress-Meetup|5928012|Santa Fe College ...|2013-05-16|   2013-05|     18:00|   Gainesville, FL|          false|  past|        [34]|    null|1368741600000|1366363670000|            21|      null|   null|  null|customize  wordpr...| Gainesville, FL|      EST|         -5|    -18000000|
 //  +-------------+--------------------+--------------------+--------------------+-------+--------------------+----------+----------+----------+------------------+---------------+------+------------+--------+-------------+-------------+--------------+----------+-------+------+--------------------+----------------+---------+-----------+-------------+
 
-  // Q12.  Has there been a change in planning times for events?
+  // Q6.  What is the most popular time when events are created?
 
-  val Q12_base_df =
-    df.select('local_date, 'time, 'created)
-      .filter('created.isNotNull && 'time.isNotNull && 'local_date.isNotNull)
-      .withColumn("year", 'local_date.substr(0,4).cast("int"))
-      .withColumn("month", 'local_date.substr(6,2).cast("int"))
-      .withColumn("prep_time_mins", (('time - 'created)/600000).cast("int"))
-      .drop('created).drop('time)
-      .filter('prep_time_mins > 0)
-      .groupBy('year, 'month)
-      .agg(sum('prep_time_mins), count('prep_time_mins))
-      .withColumnRenamed("sum(prep_time_mins)", "total_prep_time_mins")
-      .withColumnRenamed("count(prep_time_mins)", "count")
-      .withColumn("prep_time/event", 'total_prep_time_mins / 'count)
-      .drop('prep_time_mins).drop('count)
-      .orderBy('year, 'month)
+  // UDF to calculate in which minute of the day an event was created
+  def min_of_day(time: Long): Int = ((time % 8640000) / 60000).toInt
+  val min_of_dayUDF: UserDefinedFunction = udf[Int, Long](min_of_day)
 
-  println("Showing sample of results...")
-  Q12_base_df.show(10)
+  val Q6_byCount =
+    df.select('created, 'millis_adjust)
+      .filter('created.isNotNull && 'millis_adjust.isNotNull)
+      .withColumn("minute_of_day_created", min_of_dayUDF('created + 'millis_adjust))
+      .groupBy('minute_of_day_created)
+      .count()
+      .orderBy('count.desc)
+
+  Q6_byCount.show(10)
+
+  println("Writing the ranked dataset to temp file...")
+  Q6_byCount.write.option("header", "true").csv("output/temp/Q6_byCount")
+  OutputCombinerTester.outputCombiner("output/temp/Q6_byCount", "output/question_06", "by_count" )
+
+  println("Writing the chronological dataset to temp file...")
+  Q6_byCount
+    .orderBy('minute_of_day_created)     // Reordering the dataset to chronological order
+    .write.option("header", "true").csv("output/temp/Q6_chronological")
+  OutputCombinerTester.outputCombiner("output/temp/Q6_chronological", "output/question_06", "by_minute" )
 }

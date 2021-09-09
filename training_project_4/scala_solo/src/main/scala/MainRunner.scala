@@ -11,22 +11,11 @@ import org.apache.spark.sql.catalyst.expressions.aggregate.Max
 
 import scala.io.StdIn
 import java.io.{File, FileWriter, PrintWriter}
-import java.util.Date
 
 object MainRunner extends App {
 
   printWelcome()
   println()
-
-  // recursive delete function to remove any previous run's files or temp directories
-  def recursive_delete(file: File): Unit = {
-    if(file.isDirectory) {
-      file.listFiles.foreach(recursive_delete)
-      file.delete()
-    } else {
-      file.delete()
-    }
-  }
 
   // instantiating an analysis engine object to run analyses
   val ae = new AnalysisEngine
@@ -136,36 +125,16 @@ object MainRunner extends App {
 
     import spark.implicits._
 
-    // *******************************************************************************************************
-    // *
-    // *                 User Defined Functions (UDFs) for DataFrame column manipulation
-    // *
-    // *******************************************************************************************************
-
-    // Pair of UDFs to convert the category array to integers and count the number of categories [Analysis 5]
-    def category_array_converter(cat_list: List[Long]): List[Int] = cat_list.map(_.toInt)
-    val category_array_converterUDF: UserDefinedFunction = udf[List[Int], List[Long]](category_array_converter)
-
-    def category_array_counter(cat_list: List[Int]): Int = cat_list.length
-    val category_array_counterUDF: UserDefinedFunction = udf[Int, List[Int]](category_array_counter)
-
-    // UDF to calculate in which minute of the day an event was created [Analysis 6]
-    def min_of_day(time: Long): Int = ((time % 8640000) / 60000).toInt
-
-    val min_of_dayUDF: UserDefinedFunction = udf[Int, Long](min_of_day)
-
-    // *******************************************************************************************************
-    // *
-    // *                           Reading in and Formatting the DataFrame
-    // *
-    // *******************************************************************************************************
+    // *********************************************************************************
+    // *                   Reading in and Formatting the DataFrame
+    // *********************************************************************************
 
     // Initial data set read in from .tsv file
     val baseDf: DataFrame = spark.read.parquet("all_cities.parquet")
 
     // Additional timezone and time offset data
     val timeAdjDf: DataFrame = AnalysisHelper.citiesTimeAdj
-        .toDF("location", "time_zone", "hour_adjustment", "millis_adjustment")
+      .toDF("location", "time_zone", "hour_adjustment", "millis_adjustment")
 
     // Joined into a single DataFrame
     val df: DataFrame =
@@ -175,11 +144,9 @@ object MainRunner extends App {
     baseDf.unpersist()
     timeAdjDf.unpersist()
 
-    // *******************************************************************************************************
-    // *
-    // *                                          Analysis Runners
-    // *
-    // *******************************************************************************************************
+    // *********************************************************************************
+    // *                                Analysis Runners
+    // *********************************************************************************
 
     def analysis1(): Unit = {
       println("Analysis 1 initialized...")
@@ -188,8 +155,8 @@ object MainRunner extends App {
       val Q1_base_df =
         df.select('local_date)
           .filter('local_date.isNotNull)
-          .withColumn("year", 'local_date.substr(0,4).cast("int"))
-          .withColumn("month", 'local_date.substr(6,2).cast("int"))
+          .withColumn("year", 'local_date.substr(0, 4).cast("int"))
+          .withColumn("month", 'local_date.substr(6, 2).cast("int"))
           .groupBy('year, 'month)
           .count()
           .orderBy('year, 'month)
@@ -204,6 +171,7 @@ object MainRunner extends App {
       Q1_base_df.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -217,8 +185,8 @@ object MainRunner extends App {
       val Q2_base_df =
         df.select('local_date, 'is_online_event)
           .filter('local_date.isNotNull)
-          .withColumn("year", 'local_date.substr(0,4).cast("int"))
-          .withColumn("month", 'local_date.substr(6,2).cast("int"))
+          .withColumn("year", 'local_date.substr(0, 4).cast("int"))
+          .withColumn("month", 'local_date.substr(6, 2).cast("int"))
           .withColumn("is_online_event", 'is_online_event.cast("int"))
           .groupBy('year, 'month).agg(sum("is_online_event"), count("local_date"))
           .withColumnRenamed("count(local_date)", "count")
@@ -237,6 +205,7 @@ object MainRunner extends App {
       Q2_base_df.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -249,16 +218,16 @@ object MainRunner extends App {
 
       // Add tech era as new columns adding up their respective mentions.
 
-//      val tech_list = List(
-//        "ada", "android", "clojure", "cobol", "dart", "delphi", "fortran", "ios", "java", "javascript",
-//        "kotlin", "labview", "matlab", "pascal", "perl", "php", "powershell", "python", "ruby", "rust",
-//        "scala", "sql", "typescript", "visual basic", "wolfram")
+      //      val tech_list = List(
+      //        "ada", "android", "clojure", "cobol", "dart", "delphi", "fortran", "ios", "java", "javascript",
+      //        "kotlin", "labview", "matlab", "pascal", "perl", "php", "powershell", "python", "ruby", "rust",
+      //        "scala", "sql", "typescript", "visual basic", "wolfram")
 
       println("Modifying, filtering, and calculating...")
       val Q3_base_df =
         df.select('id, 'local_date, 'description)
-          .withColumn("year", 'local_date.substr(0,4).cast("int"))
-          .withColumn("month", 'local_date.substr(6,2).cast("int"))
+          .withColumn("year", 'local_date.substr(0, 4).cast("int"))
+          .withColumn("month", 'local_date.substr(6, 2).cast("int"))
           .withColumn("ada", 'description.contains("ada").cast("int"))
           .withColumn("android", 'description.contains("android").cast("int"))
           .withColumn("clojure", 'description.contains("clojure").cast("int"))
@@ -286,14 +255,14 @@ object MainRunner extends App {
           .withColumn("wolfram", 'description.contains("wolfram").cast("int"))
           .groupBy('year, 'month)
           .agg(
-            sum("ada"),         sum("android"),       sum("clojure"),
-            sum("cobol"),       sum("dart"),          sum("delphi"),
-            sum("fortran"),     sum("ios"),           sum("java"),
-            sum("javascript"),  sum("kotlin"),        sum("labview"),
-            sum("matlab"),      sum("pascal"),        sum("perl"),
-            sum("php"),         sum("powershell"),    sum("python"),
-            sum("ruby"),        sum("scala"),         sum("sql"),
-            sum("typescript"),  sum("visual_basic"),  sum("wolfram"))
+            sum("ada"), sum("android"), sum("clojure"),
+            sum("cobol"), sum("dart"), sum("delphi"),
+            sum("fortran"), sum("ios"), sum("java"),
+            sum("javascript"), sum("kotlin"), sum("labview"),
+            sum("matlab"), sum("pascal"), sum("perl"),
+            sum("php"), sum("powershell"), sum("python"),
+            sum("ruby"), sum("scala"), sum("sql"),
+            sum("typescript"), sum("visual_basic"), sum("wolfram"))
           .withColumnRenamed("sum(ada)", "ada")
           .withColumnRenamed("sum(android)", "android")
           .withColumnRenamed("sum(clojure)", "clojure")
@@ -323,12 +292,13 @@ object MainRunner extends App {
 
       println("Saving analysis results to temp file...")
       Q3_base_df.write.option("header", "true").csv("output/temp/Q3_results")
-      outputCombiner("output/temp/Q3_results", "output/question_03" , "results")
+      outputCombiner("output/temp/Q3_results", "output/question_03", "results")
 
       println("Cleaning up results DataFrame...")
       Q3_base_df.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -372,6 +342,7 @@ object MainRunner extends App {
       Q04_venue_df.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -382,20 +353,20 @@ object MainRunner extends App {
     def analysis5(): Unit = {
       println("Analysis 5 initialized...")
 
-//       Topic List
-//        2: Career & Business
-//        4: Movements
-//        6: Education
-//       12: LGBTQ
-//       15: Hobbies & Craft
-//       32: Sports and Fitness
-//       36: Writing
+      //       Topic List
+      //        2: Career & Business
+      //        4: Movements
+      //        6: Education
+      //       12: LGBTQ
+      //       15: Hobbies & Craft
+      //       32: Sports and Fitness
+      //       36: Writing
 
       val Q5_base_df = df
         .select('local_date, 'category_ids)
         .filter('category_ids.isNotNull && 'local_date.isNotNull)
-        .withColumn("year", 'local_date.substr(0,4).cast("int"))
-        .withColumn("month", 'local_date.substr(6,2).cast("int"))
+        .withColumn("year", 'local_date.substr(0, 4).cast("int"))
+        .withColumn("month", 'local_date.substr(6, 2).cast("int"))
         .withColumn("1", 'category_ids.cast("String").contains("1").cast("int"))
         .withColumn("2", 'category_ids.cast("String").contains("2").cast("int"))
         .withColumn("3", 'category_ids.cast("String").contains("3").cast("int"))
@@ -424,13 +395,13 @@ object MainRunner extends App {
         .withColumn("36", 'category_ids.cast("String").contains("36").cast("int"))
         .groupBy('year, 'month)
         .agg(
-          sum("1"),   sum("2"),   sum("3"),   sum("4"),
-          sum("6"),   sum("8"),   sum("9"),   sum("10"),
-          sum("11"),  sum("12"),  sum("13"),  sum("14"),
-          sum("15"),  sum("16"),  sum("21"),  sum("22"),
-          sum("23"),  sum("24"),  sum("25"),  sum("27"),
-          sum("28"),  sum("29"),  sum("32"),  sum("33"),
-          sum("34"),  sum("36"))
+          sum("1"), sum("2"), sum("3"), sum("4"),
+          sum("6"), sum("8"), sum("9"), sum("10"),
+          sum("11"), sum("12"), sum("13"), sum("14"),
+          sum("15"), sum("16"), sum("21"), sum("22"),
+          sum("23"), sum("24"), sum("25"), sum("27"),
+          sum("28"), sum("29"), sum("32"), sum("33"),
+          sum("34"), sum("36"))
         .withColumnRenamed("sum(1)", "Career")
         .withColumnRenamed("sum(2)", "Movements")
         .withColumnRenamed("sum(3)", "3")
@@ -463,12 +434,13 @@ object MainRunner extends App {
 
       println("Saving analysis results to temp file...")
       Q5_base_df.write.option("header", "true").csv("output/temp/Q5_results")
-      outputCombiner("output/temp/Q5_results", "output/question_05" , "topic_mentions_over_time")
+      outputCombiner("output/temp/Q5_results", "output/question_05", "topic_mentions_over_time")
 
       println("Cleaning up DataFrames...")
       Q5_base_df.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -479,11 +451,14 @@ object MainRunner extends App {
     def analysis6(): Unit = {
       println("Analysis 6 initialized...")
 
-      println("Calculating the creation time of each event...")
+      // UDF to calculate in which minute of the day an event was created
+      def min_of_day(time: Long): Int = ((time % 8640000) / 60000).toInt
+      val min_of_dayUDF: UserDefinedFunction = udf[Int, Long](min_of_day)
+
       val Q6_byCount =
-        df.select('created, 'millis_adjustment)
-          .filter('created.isNotNull && 'millis_adjustment.isNotNull)
-          .withColumn("minute_of_day_created", min_of_dayUDF('created + 'millis_adjustment))
+        df.select('created, 'millis_adjust)
+          .filter('created.isNotNull && 'millis_adjust.isNotNull)
+          .withColumn("minute_of_day_created", min_of_dayUDF('created + 'millis_adjust))
           .groupBy('minute_of_day_created)
           .count()
           .orderBy('count.desc)
@@ -492,18 +467,19 @@ object MainRunner extends App {
 
       println("Writing the ranked dataset to temp file...")
       Q6_byCount.write.option("header", "true").csv("output/temp/Q6_byCount")
-      outputCombiner("output/temp/Q6_byCount", "output/question_06", "by_count" )
+      OutputCombinerTester.outputCombiner("output/temp/Q6_byCount", "output/question_06", "by_count" )
 
       println("Writing the chronological dataset to temp file...")
       Q6_byCount
         .orderBy('minute_of_day_created)     // Reordering the dataset to chronological order
         .write.option("header", "true").csv("output/temp/Q6_chronological")
-      outputCombiner("output/temp/Q6_chronological", "output/question_06", "by_minute" )
+      OutputCombinerTester.outputCombiner("output/temp/Q6_chronological", "output/question_06", "by_minute" )
 
       println("Cleaning up DataFrames...")
       Q6_byCount.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -518,7 +494,7 @@ object MainRunner extends App {
         df
           .select('duration)
           .filter('duration.isNotNull)
-          .withColumn("mins_duration", ('duration/60000).cast("int"))
+          .withColumn("mins_duration", ('duration / 60000).cast("int"))
           .drop('duration)
           .groupBy('mins_duration)
           .count()
@@ -537,11 +513,11 @@ object MainRunner extends App {
       val Q7_fullSet =
         df
           .select('duration)
-          .filter( 'duration.isNotNull )
-          .withColumn( "mins_duration", ('duration / 60000).cast("int") )
-          .groupBy( 'mins_duration )
+          .filter('duration.isNotNull)
+          .withColumn("mins_duration", ('duration / 60000).cast("int"))
+          .groupBy('mins_duration)
           .count()
-          .orderBy( 'mins_duration )
+          .orderBy('mins_duration)
 
       Q7_fullSet.show(10)
 
@@ -550,13 +526,13 @@ object MainRunner extends App {
         .select('mins_duration, 'count)
         .filter('mins_duration <= 1440)
         .write.option("header", "true").csv("output/temp/Q7_firstDay")
-      outputCombiner( "output/temp/Q7_firstDay", "output/question_07", "first_day" )
+      outputCombiner("output/temp/Q7_firstDay", "output/question_07", "first_day")
 
       // Full set of results
       println("Writing full chronological data set to temp file...")
 
       Q7_fullSet
-        .select( 'mins_duration, 'count )
+        .select('mins_duration, 'count)
         .write.option("header", "true").csv("output/temp/Q7_fullSet")
       outputCombiner("output/temp/Q7_fullSet", "output/question_07", "full_set")
 
@@ -564,6 +540,7 @@ object MainRunner extends App {
       Q7_fullSet.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -584,12 +561,13 @@ object MainRunner extends App {
 
       println("Saving analysis results to temp file...")
       Q08_df.write.option("header", "true").csv("output/temp/Q08_top_rsvps")
-      outputCombiner("output/temp/Q08_top_rsvps", "output/question_08" , "top_rsvps")
+      outputCombiner("output/temp/Q08_top_rsvps", "output/question_08", "top_rsvps")
 
       println("Cleaning up DataFrames...")
       Q08_df.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -605,8 +583,8 @@ object MainRunner extends App {
           .filter('yes_rsvp_count.isNotNull || 'rsvp_limit.isNotNull)
           .na.fill(0)
           .withColumn("event_count", 'yes_rsvp_count + 'rsvp_limit)
-          .withColumn("year", 'local_date.substr(0,4).cast("int"))
-          .withColumn("month", 'local_date.substr(6,2).cast("int"))
+          .withColumn("year", 'local_date.substr(0, 4).cast("int"))
+          .withColumn("month", 'local_date.substr(6, 2).cast("int"))
           .groupBy('year, 'month).sum("event_count")
           .withColumnRenamed("sum(event_count)", "daily_event_attends")
           .drop('yes_rsvp_count).drop('rsvp_limit).drop('local_date)
@@ -614,12 +592,13 @@ object MainRunner extends App {
 
       println("Saving analysis results to temp file...")
       Q09_base_df.write.option("header", "true").csv("output/temp/Q09")
-      outputCombiner("output/temp/Q09", "output/question_09" , "daily_event_attendance")
+      outputCombiner("output/temp/Q09", "output/question_09", "daily_event_attendance")
 
       println("Cleaning up DataFrames...")
       Q09_base_df.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -634,8 +613,8 @@ object MainRunner extends App {
       val Q10_base_df =
         df.select('accepts, 'local_date)
           .filter('accepts.isNotNull || 'local_date.isNotNull)
-          .withColumn("year", 'local_date.substr(0,4).cast("int"))
-          .withColumn("month", 'local_date.substr(6,2).cast("int"))
+          .withColumn("year", 'local_date.substr(0, 4).cast("int"))
+          .withColumn("month", 'local_date.substr(6, 2).cast("int"))
           .withColumn("paypal", 'accepts.contains("paypal").cast("int"))
           .withColumn("cash", 'accepts.contains("cash").cast("int"))
           .withColumn("wepay", 'accepts.contains("wepay").cast("int"))
@@ -658,6 +637,7 @@ object MainRunner extends App {
       Q10_base_df.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -673,8 +653,8 @@ object MainRunner extends App {
         df.select('amount, 'local_date)
           .filter('local_date.isNotNull)
           .na.fill(0)
-          .withColumn("year", 'local_date.substr(0,4).cast("int"))
-          .withColumn("month", 'local_date.substr(6,2).cast("int"))
+          .withColumn("year", 'local_date.substr(0, 4).cast("int"))
+          .withColumn("month", 'local_date.substr(6, 2).cast("int"))
           .groupBy('year, 'month).avg("amount")
           .withColumnRenamed("avg(amount)", "avg_cost")
           .orderBy('year, 'month)
@@ -684,12 +664,13 @@ object MainRunner extends App {
 
       println("Saving analysis results to temp file...")
       Q11_df.write.option("header", "true").csv("output/temp/Q11")
-      outputCombiner("output/temp/Q11", "output/question_11" , "avg_attendance_cost")
+      outputCombiner("output/temp/Q11", "output/question_11", "avg_attendance_cost")
 
       println("Cleaning up results DataFrame...")
       Q11_df.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -703,9 +684,9 @@ object MainRunner extends App {
       val Q12_base_df =
         df.select('local_date, 'time, 'created)
           .filter('created.isNotNull && 'time.isNotNull && 'local_date.isNotNull)
-          .withColumn("year", 'local_date.substr(0,4).cast("int"))
-          .withColumn("month", 'local_date.substr(6,2).cast("int"))
-          .withColumn("prep_time_mins", (('time - 'created)/600000).cast("int"))
+          .withColumn("year", 'local_date.substr(0, 4).cast("int"))
+          .withColumn("month", 'local_date.substr(6, 2).cast("int"))
+          .withColumn("prep_time_mins", (('time - 'created) / 600000).cast("int"))
           .drop('created).drop('time)
           .filter('prep_time_mins > 0 && 'year < 2022)
           .groupBy('year, 'month)
@@ -727,6 +708,7 @@ object MainRunner extends App {
       Q12_base_df.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
@@ -757,73 +739,84 @@ object MainRunner extends App {
       Q13_df.unpersist()
 
       println("Beginning visualization creation...")
+
       /**
        * Data visualization logic goes here
        */
 
       println("*** Analysis finished. ***\n\n")
     }
+  }
 
-    // *******************************************************************************************************
-    // *
-    // *                                 Output Combiner and Directory Cleaner
-    // *
-    // *******************************************************************************************************
+  // *******************************************************************************************************
+  // *
+  // *                                 Output Combiner and Directory Cleaner
+  // *
+  // *******************************************************************************************************
 
-    def outputCombiner(inPath: String, outPath: String, title: String, header: Boolean = true): Unit = {
-      println(s"Moving temp data files to: $outPath/$title.csv")
+  def outputCombiner(inPath: String, outPath: String, title: String, header: Boolean = true): Unit = {
+    println(s"Moving temp data files to: $outPath/$title.csv")
 
-      // Opening the input directory
-      val directory = new File(inPath)
+    // Opening the input directory
+    val directory = new File(inPath)
 
-      // Creating a list of all .csv files in the input directory
-      val csv_files = directory
-        .listFiles()
-        .filter(_.toString.endsWith(".csv"))
+    // Creating a list of all .csv files in the input directory
+    val csv_files = directory
+      .listFiles()
+      .filter(_.toString.endsWith(".csv"))
 
-      // creating a file writer object to write each partial csv into one temp file
-      // NOTE: here a .txt file is being used for coalescing the lines for easier formatting
-      val file = new File(s"$inPath/temp.txt")
-      val writer = new PrintWriter(new FileWriter(file))
+    // creating a file writer object to write each partial csv into one temp file
+    // NOTE: here a .txt file is being used for coalescing the lines for easier formatting
+    val file = new File(s"$inPath/temp.txt")
+    val writer = new PrintWriter(new FileWriter(file))
 
-      // whether or not the csv files have headers, the first needs to be written
-      // line for line (i.e. if it has headers, the headers need to be written)
-      val bufferedSource = scala.io.Source.fromFile(csv_files(0))
-      val lines = bufferedSource.getLines()
-      for (line <- lines) {
-        writer.write(line)
-        writer.write('\n')
+    // whether or not the csv files have headers, the first needs to be written
+    // line for line (i.e. if it has headers, the headers need to be written)
+    val bufferedSource = scala.io.Source.fromFile(csv_files(0))
+    val lines = bufferedSource.getLines()
+    for (line <- lines) {
+      writer.write(line)
+      writer.write('\n')
+    }
+    bufferedSource.close()
+
+    // now loop through every line in every csv_file other than the first one
+    for (csv_file <- csv_files.drop(1)) {
+      // opening the file as a buffered source, reading the lines from it, then writing
+      // the lines to the buffered writer object
+      val bufferedSource = scala.io.Source.fromFile(csv_file)
+
+      // if the header flag is active, then the first line of every csv file can be
+      // dropped/skipped, otherwise just write every line to the composite
+      if (header) {
+        for (line <- bufferedSource.getLines().drop(1)) {
+          writer.write(line)
+          writer.write('\n')
+        }
+      } else {
+        for (line <- bufferedSource.getLines()) {
+          writer.write(line)
+          writer.write('\n')
+        }
       }
       bufferedSource.close()
+    }
+    writer.close()
 
-      // now loop through every line in every csv_file other than the first one
-      for (csv_file <- csv_files.drop(1)) {
-        // opening the file as a buffered source, reading the lines from it, then writing
-        // the lines to the buffered writer object
-        val bufferedSource = scala.io.Source.fromFile(csv_file)
+    // creating the desired output directory then moving the temp file to that directory
+    // and renaming the temp file to the desired title
+    new File(outPath).mkdirs()
+    val temp_output = new File(s"$inPath/temp.txt")
+    temp_output.renameTo(new File(s"$outPath/$title.csv"))
+  }
 
-        // if the header flag is active, then the first line of every csv file can be
-        // dropped/skipped, otherwise just write every line to the composite
-        if (header) {
-          for (line <- bufferedSource.getLines().drop(1)) {
-            writer.write(line)
-            writer.write('\n')
-          }
-        } else {
-          for (line <- bufferedSource.getLines()) {
-            writer.write(line)
-            writer.write('\n')
-          }
-        }
-        bufferedSource.close()
-      }
-      writer.close()
-
-      // creating the desired output directory then moving the temp file to that directory
-      // and renaming the temp file to the desired title
-      new File(outPath).mkdirs()
-      val temp_output = new File(s"$inPath/temp.txt")
-      temp_output.renameTo(new File(s"$outPath/$title.csv"))
+  // recursive delete function to remove any previous run's files or temp directories
+  def recursive_delete(file: File): Unit = {
+    if(file.isDirectory) {
+      file.listFiles.foreach(recursive_delete)
+      file.delete()
+    } else {
+      file.delete()
     }
   }
 }
