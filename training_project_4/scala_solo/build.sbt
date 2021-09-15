@@ -2,9 +2,7 @@ name := "Meetup Data Analysis Tool"
 
 version := "0.1"
 
-scalaVersion := "2.12.10"
-
-resolvers += Resolver.bintrayRepo("cibotech", "public")
+scalaVersion := "2.12.14"
 
 libraryDependencies += "org.apache.spark" %% "spark-sql" % "3.1.2"
-libraryDependencies += "com.cibo" %% "evilplot" % "0.6.3"
+libraryDependencies += "io.github.cibotech" %% "evilplot" % "0.8.1"

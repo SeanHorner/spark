@@ -1,5 +1,5 @@
-import com.cibo.evilplot.colors.{HSLA, RGB}
-import com.cibo.evilplot.geometry.{Align, Drawable, Extent, Rect, Text}
+import com.cibo.evilplot.colors.RGB
+import com.cibo.evilplot.geometry.{Align, Drawable, Extent, Rect, Rotate, Text}
 import com.cibo.evilplot.plot._
 import com.cibo.evilplot.plot.aesthetics.DefaultTheme.{DefaultFonts, DefaultTheme}
 import com.cibo.evilplot.plot.aesthetics.Theme
@@ -15,7 +15,7 @@ object PlottingTester extends App {
   )
   def plotBar(df: DataFrame, title: String, fname: String, path: String): Unit = {
     // Convert dataframe into sequence of doubles for axes
-    val seq = df.collect().map(row => row.toSeq.map(_.toString.toDouble)).toSeq.flatten
+    val seq = df.collect().drop(1).map(row => row.toSeq.map(_.toString.toDouble)).toSeq.flatten
 
     var yAxis = Seq[Double]()
     var labels = Seq[String]()
@@ -36,10 +36,8 @@ object PlottingTester extends App {
       def render(plot: Plot, extent: Extent, category: Bar): Drawable = {
         val rect = Rect(extent)
         val value = category.values.head
-        val color = RGB(0, 102, 255)
-        Align.center(rect filled color, Text(s"$value", size = 20)
-          .filled(theme.colors.label)
-        ).group
+        val color = RGB(117, 33, 167)
+        Align.center(rect filled color).group
       }
     }
 
